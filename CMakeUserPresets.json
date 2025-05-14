@@ -1,0 +1,9 @@
+{
+    "version": 4,
+    "vendor": {
+        "conan": {}
+    },
+    "include": [
+        "X:\\Dev\\3dPrinterProxy\\build\\generators\\CMakePresets.json"
+    ]
+}

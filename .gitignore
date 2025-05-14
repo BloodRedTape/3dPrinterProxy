@@ -1,0 +1,9 @@
+enc*
+build
+out
+
+
+.vs
+.vscode
+.cache
+.clangd
