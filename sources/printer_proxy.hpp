@@ -1,6 +1,6 @@
 #pragma once
 
-#include <beauty/beauty.hpp>
+#include <beauty/server.hpp>
 
 class PrinterProxy {
 private:
@@ -13,4 +13,8 @@ public:
     void Listen(std::uint16_t port);
 
     int Run();
+
+    void GetInfo(const beauty::request &req, beauty::response &resp);
+
+    void GetPrinters(const beauty::request &req, beauty::response &resp);
 };

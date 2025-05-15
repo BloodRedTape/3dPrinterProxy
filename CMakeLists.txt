@@ -12,6 +12,7 @@ add_subdirectory(libs/bsl)
 add_executable(3dPrinterProxy
 	"./sources/main.cpp"
 	"./sources/printer_proxy.cpp"
+	"./sources/printers/shui_printer.cpp"
 )
 
 target_link_libraries(3dPrinterProxy 
@@ -20,3 +21,5 @@ target_link_libraries(3dPrinterProxy
 	PUBLIC boost::boost 
 	PUBLIC nlohmann_json::nlohmann_json
 )
+
+target_include_directories(3dPrinterProxy PRIVATE "./sources")
