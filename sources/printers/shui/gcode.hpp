@@ -47,6 +47,8 @@ class GCodeExecutionEngine {
 public:
 	std::function<void(const std::string &)> WriteGCode;
 public:
+	static void DefaultGCodeCallback(std::optional<std::string> result);
+public:
 
 	void Submit(std::string gcode, GCodeSubmissionState::OnResultType on_result, std::int64_t retries);
 

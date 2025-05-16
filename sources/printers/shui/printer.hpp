@@ -41,6 +41,8 @@ public:
 
 	virtual void ReleaseMotors();
 
+	virtual void CancelPrint();
+
 	void OnConnectionConnect();
 
 	void OnConnectionTick();

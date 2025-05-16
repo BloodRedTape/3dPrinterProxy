@@ -4,6 +4,12 @@
 
 DEFINE_LOG_CATEGORY(GCodeExecution)
 
+void GCodeExecutionEngine::DefaultGCodeCallback(std::optional<std::string> result) {
+	if (!result.has_value()) {
+        LogGCodeExecution(Error, "GCode Command Failed");
+	}
+}
+
 void GCodeExecutionEngine::Submit(std::string gcode, GCodeSubmissionState::OnResultType on_result, std::int64_t retries) {
 	m_SubmittedCommands.push({gcode, on_result, retries});
 }
