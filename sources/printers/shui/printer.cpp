@@ -53,18 +53,57 @@ void ShuiPrinter::RunStatePollingAsync(boost::asio::io_context & context){
 #endif
 }
 
-static auto NullGCodeCallback = [](auto){};
+static auto DefaultGCodeCallback = [](std::optional<std::string> result){
+    if (!result.has_value()) {
+        LogShui(Error, "GCode Command Failed");
+    }
+
+};
 
 void ShuiPrinter::Identify() {
-    m_Connection->SubmitGCode("M300", NullGCodeCallback, 1);
+    m_Connection->SubmitGCode("M300", DefaultGCodeCallback, 1);
 }
 
 void ShuiPrinter::SetTargetBedTemperature(std::int64_t temperature){
-    m_Connection->SubmitGCode(Format("M140 S%", temperature), NullGCodeCallback, 1);
+    m_Connection->SubmitGCode(Format("M140 S%", temperature), DefaultGCodeCallback, 1);
 }
 
 void ShuiPrinter::SetTargetExtruderTemperature(std::int64_t temperature){
-    m_Connection->SubmitGCode(Format("M104 T0 S%", temperature), NullGCodeCallback, 1);
+    m_Connection->SubmitGCode(Format("M104 T0 S%", temperature), DefaultGCodeCallback, 1);
+}
+
+static std::string NormalizeMessage(std::string message) {
+    auto pos = message.find(ShuiPrinterConnection::PrinterStreamLineSeparator);
+
+    if(pos != std::string::npos){
+        message = message.substr(0, pos);
+        LogShui(Warning, "SetLCDMessage: found PrinterStreamLineSeparator in message, trimming...");
+    }
+
+    return message;
+}
+
+void ShuiPrinter::SetLCDMessage(std::string message) {
+    m_Connection->SubmitGCode(Format("M117 %", NormalizeMessage(message)), DefaultGCodeCallback, 1);
+}
+
+void ShuiPrinter::SetFanSpeed(std::uint8_t speed){
+    m_Connection->SubmitGCode(Format("M106 S%", (int)speed), DefaultGCodeCallback, 1);
+}
+void ShuiPrinter::PauseUntillUserInput(std::string message){
+    m_Connection->SubmitGCode(Format("M0 %", message), DefaultGCodeCallback, 1);
+}
+
+void ShuiPrinter::PausePrint(){
+    m_Connection->SubmitGCode("M25", DefaultGCodeCallback, 1);
+}
+
+void ShuiPrinter::ResumePrint(){
+    m_Connection->SubmitGCode("M24", DefaultGCodeCallback, 1);
+}
+
+void ShuiPrinter::ReleaseMotors() {
+    m_Connection->SubmitGCode("M84", DefaultGCodeCallback, 1);
 }
 
 void ShuiPrinter::OnConnectionConnect() {
@@ -130,6 +169,20 @@ void ShuiPrinter::SubmitReportSequence() {
 #endif
         UpdateStateFromSelectedFile(result.value());
     });
+
+    m_Connection->SubmitGCode("M123", [&](std::optional<std::string> result) {
+        if(!result.has_value()){
+#if SHUI_VERBOSE_LOGGING
+            Println("\tM123 Failed");
+#endif
+            return;
+        }
+
+#if SHUI_VERBOSE_LOGGING
+        Println("\tM123: %", result.value());
+#endif
+        UpdateStateFromSelectedFile(result.value());
+    });
 }
 
 void ShuiPrinter::UpdateStateFromSystemLine(const std::string& line) {
@@ -145,9 +198,11 @@ void ShuiPrinter::UpdateStateFromSystemLine(const std::string& line) {
             state.Print = PrintState();
             changed = true;
         }
-        
-        if (state.Print.value().Status != PrintStatus::Busy) {
-            state.Print.value().Status = PrintStatus::Busy;
+
+        auto& print = state.Print.value();
+
+        if (print.Status != PrintStatus::Busy) {
+            print.Status = PrintStatus::Busy;
             changed = true;
         }
     }
@@ -249,10 +304,11 @@ void ShuiPrinter::UpdateStateFromSdCardStatus(const std::string& line) {
         if(print.TargetBytesPrinted != target)
             changed = true;
 
-        if(print.Status != PrintStatus::Printing)
+        if(print.Status != PrintStatus::Printing){
+            print.Status = PrintStatus::Printing;
             changed = true;
+        }
 
-        print.Status = PrintStatus::Printing;
         print.CurrentBytesPrinted = current;
         print.TargetBytesPrinted = target;
 

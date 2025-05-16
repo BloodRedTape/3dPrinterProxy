@@ -14,7 +14,7 @@ bool GCodeExecutionEngine::IsSystemLine(const std::string& line){
 
 bool GCodeExecutionEngine::IsBusySystemLine(const std::string& line) {
 	return boost::starts_with(line, "busy") 
-		|| boost::starts_with(line, "echo") 
+		//|| boost::starts_with(line, "echo") 
 		|| boost::starts_with(line, "busyok T0:") 
 		|| boost::starts_with(line, "busyT0:") ;
 }

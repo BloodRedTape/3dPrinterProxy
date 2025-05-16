@@ -29,6 +29,18 @@ public:
 
 	virtual void SetTargetExtruderTemperature(std::int64_t tempearture);
 
+	virtual void SetLCDMessage(std::string message);
+
+	virtual void SetFanSpeed(std::uint8_t speed);
+
+	virtual void PauseUntillUserInput(std::string message = "");
+
+	virtual void PausePrint();
+
+	virtual void ResumePrint();
+
+	virtual void ReleaseMotors();
+
 	void OnConnectionConnect();
 
 	void OnConnectionTick();

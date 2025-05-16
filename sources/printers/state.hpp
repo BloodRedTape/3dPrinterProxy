@@ -7,7 +7,6 @@
 enum class PrintStatus {
 	Busy,
 	Printing,
-	//Paused
 };
 
 struct PrintState {
@@ -26,7 +25,7 @@ struct PrinterState {
 	float ExtruderTemperature = 0.f;
 	float TargetExtruderTemperature = 0.f;
 	
-	//float FanSpeed;
+	//float FanSpeed = 0.f;
 
 	std::optional<PrintState> Print;
 };
