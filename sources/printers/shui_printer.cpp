@@ -20,13 +20,98 @@ enum class GCodeState {
 };
 
 struct GCodeSubmissionState {
-	std::string GCode;
-	std::function<void(const std::string &)> OnExecuted;
-	GCodeState State = GCodeState::Enqueued;
-	std::string Result;
+	using OnResultType = std::function<void(std::optional<std::string>)>;
 
-	auto ToBuffer()const {
-		return boost::asio::buffer(GCode.data(), GCode.size());
+	std::string GCode;
+	OnResultType OnResult;
+	std::int64_t Retries = 0;
+	GCodeState State = GCodeState::Enqueued;
+	std::string ResultAccumulator;
+	std::int64_t SubmitedAfterLine = 0;
+	
+	bool CanRetry()const {
+		return Retries > 0;
+	}
+
+	void MakeRetry() {
+		assert(CanRetry());
+		
+		Retries--;
+		State = GCodeState::Enqueued;
+		ResultAccumulator = "";
+		SubmitedAfterLine = 0;
+	}
+};
+
+
+class GCodeExecutionEngine {
+	std::queue<GCodeSubmissionState> m_SubmittedCommands;
+
+	static constexpr std::int64_t PreambleLinesCount = 3;
+public:
+	std::function<void(const std::string &)> WriteGCode;
+public:
+
+	void SubmitGCode(std::string gcode, GCodeSubmissionState::OnResultType on_result, std::int64_t retries) {
+		m_SubmittedCommands.push({gcode, on_result, retries});
+	}
+
+	static bool IsSystemLine(const std::string& line){
+		return boost::starts_with(line, "ok T0:");
+	}
+
+	bool IsCommandFinishedLine(const std::string& line) {
+		return !IsSystemLine(line) && boost::starts_with(line, "ok");
+	}
+
+	void OnReadingDone(std::int64_t last_index) {
+
+		if(!m_SubmittedCommands.size() || last_index <= PreambleLinesCount)
+			return;
+
+		GCodeSubmissionState &current = m_SubmittedCommands.front();
+
+		if(current.State == GCodeState::Enqueued){
+			LogShuiIf(!WriteGCode, Error, "GCode writing callback is null");
+
+			if(WriteGCode) WriteGCode(current.GCode);
+
+			current.State = GCodeState::Sent;
+			current.SubmitedAfterLine = last_index;
+		}
+	}
+
+	void OnLine(const std::string& line, std::int64_t index) {
+		if(!m_SubmittedCommands.size())
+			return;
+
+		GCodeSubmissionState &current = m_SubmittedCommands.front();
+		if (current.State != GCodeState::Sent)
+			return;
+
+		//connection restarted
+		if (index < current.SubmitedAfterLine) {
+			if (current.CanRetry()) {
+				current.MakeRetry();
+			}else{
+				if(current.OnResult) current.OnResult(std::nullopt);
+
+				m_SubmittedCommands.pop();
+			}
+		}
+
+		if(IsCommandFinishedLine(line)){
+				//remove last \n
+			if(current.ResultAccumulator.size())
+				current.ResultAccumulator.pop_back();
+
+			if(current.OnResult) current.OnResult(current.ResultAccumulator);
+			LogShui(Display, "Command took % lines", index - current.SubmitedAfterLine);
+
+			m_SubmittedCommands.pop();
+		} else if(!IsSystemLine(line)) {
+			current.ResultAccumulator += line + "\n";
+		}
 	}
 };
 
@@ -45,9 +130,10 @@ class ShuiPrinterConnection: public std::enable_shared_from_this<ShuiPrinterConn
 	std::int64_t m_Timeouts = 0;
 	std::int64_t m_Lines = 0;
 
-	std::queue<GCodeSubmissionState> m_SubmittedCommands;
+	GCodeExecutionEngine m_GCodeEngine;
 public:
-	std::function<void(const std::string &line)> OnPrinterLine;
+
+	std::function<void(const std::string &, std::int64_t)> OnPrinterLine;
 public:
 	ShuiPrinterConnection(boost::asio::io_context &context, const std::string &ip, std::uint16_t port, std::int32_t seconds_timeout = 4):
 		m_TimeoutTimer(context),
@@ -55,7 +141,19 @@ public:
 		m_Ip(ip),
 		m_Port(port),
 		m_SecondsTimeout(seconds_timeout)
-	{}
+	{
+		m_GCodeEngine.WriteGCode = [&](std::string gcode) {
+			if(!gcode.size())
+				return;
+
+			if(gcode.back() != PrinterStreamLineSeparator)
+				gcode.push_back(PrinterStreamLineSeparator);
+			
+			boost::system::error_code ec;
+			m_Socket.write_some(boost::asio::buffer(gcode.data(), gcode.size()), ec);
+			LogShuiIf(ec);
+		};
+	}
 
 	std::int64_t Timeouts()const {
 		return m_Timeouts;
@@ -65,13 +163,10 @@ public:
 		return m_SecondsTimeout;
 	}
 
-	void SubmitGCode(std::string gcode, std::function<void(const std::string &)> executed) {
-		if(gcode.find(PrinterStreamLineSeparator) != gcode.size() - 1)
-			gcode += '\n';
-		
-		m_SubmittedCommands.push({gcode, executed});
+	void SubmitGCode(std::string gcode, GCodeSubmissionState::OnResultType on_result) {
+		m_GCodeEngine.SubmitGCode(std::move(gcode), on_result, 1);
 	}
-
+	
 	void Connect() {
 		CancelTimeout();
 		
@@ -90,9 +185,6 @@ public:
 		StartReconnectTimeout();
 	}
 
-	bool IsSystemLine(const std::string& line){
-		return boost::starts_with(line, "ok T0:");
-	}
 private:
 
 
@@ -140,43 +232,20 @@ private:
 			std::string line = m_TempBuffer.substr(0, separator_pos);
 			m_TempBuffer = m_TempBuffer.substr(separator_pos + 1);
 
-			m_Lines++;
-
 			HandlePrinterLine(line);
+
+			m_Lines++;
 		}
 
 		Read();
-
-		if(!m_SubmittedCommands.size() || m_Lines <= 3)
-			return;
-
-		GCodeSubmissionState &current = m_SubmittedCommands.front();
-
-		if(current.State == GCodeState::Enqueued){
-			m_Socket.write_some(current.ToBuffer());
-			current.State = GCodeState::Sent;
-		}
+		
+		m_GCodeEngine.OnReadingDone(m_Lines);
 	}
 
 	void HandlePrinterLine(const std::string &line) {
-		if(OnPrinterLine) OnPrinterLine(line);
+		if(OnPrinterLine) OnPrinterLine(line, m_Lines);
 
-		if(IsSystemLine(line))
-			return;
-
-		if(!m_SubmittedCommands.size())
-			return;
-
-		GCodeSubmissionState &current = m_SubmittedCommands.front();
-		if (current.State == GCodeState::Sent) {
-			if(boost::starts_with(line, "ok")){
-				if(current.OnExecuted) current.OnExecuted(current.Result);
-
-				m_SubmittedCommands.pop();
-			} else {
-				current.Result += line + "\n";
-			}
-		} 
+		m_GCodeEngine.OnLine(line, m_Lines);
 	}
 
 	void StartReconnectTimeout() {
@@ -216,16 +285,40 @@ ShuiPrinter::ShuiPrinter(std::string ip, std::uint16_t port):
 
 void ShuiPrinter::RunStatePollingAsync(boost::asio::io_context & context){
 	static auto sp = std::make_shared<ShuiPrinterConnection>(context, m_Ip, m_Port);
-	sp->OnPrinterLine = [](auto line) {
-		Println("Line: %", line);
+	sp->OnPrinterLine = [](auto line, auto line_number) {
+		Println("[%]: %", line_number, line);
 	};
 	sp->Connect();
 
-	auto Print = [](const std::string& result) {
-		Println("Result: %", result);
+	static std::vector<std::string> results;
+	static std::int64_t fails;
+
+	auto Print = [&](std::optional<std::string> result) {
+		if(result.has_value())
+			results.push_back(result.value());
+		else
+			fails++;
 	};
 
 	sp->SubmitGCode("M27", Print);
+	sp->SubmitGCode("M20", Print);
+	sp->SubmitGCode("M20", Print);
+	sp->SubmitGCode("M20", Print);
+	sp->SubmitGCode("M20", Print);
+	sp->SubmitGCode("M20", Print);
+	sp->SubmitGCode("M20", Print);
+	sp->SubmitGCode("M20", Print);
+	sp->SubmitGCode("M20", Print);
+	sp->SubmitGCode("M20", Print);
+	sp->SubmitGCode("M20", Print);
+	sp->SubmitGCode("M20", Print);
+	sp->SubmitGCode("M20", Print);
+	sp->SubmitGCode("M20", Print);
+	sp->SubmitGCode("M20", Print);
+	sp->SubmitGCode("M20", Print);
+	sp->SubmitGCode("M27", [&](std::optional<std::string> result) {
+		Println("CommandStats: Executed %, Failed %", results.size(), fails);
+	});
 }
 
 std::optional<PrinterState> ShuiPrinter::GetPrinterState() const {
