@@ -12,7 +12,9 @@ add_subdirectory(libs/bsl)
 add_executable(3dPrinterProxy
 	"./sources/main.cpp"
 	"./sources/printer_proxy.cpp"
-	"./sources/printers/shui_printer.cpp"
+	"./sources/printers/shui/printer.cpp"
+	"./sources/printers/shui/gcode.cpp" 
+	"./sources/printers/shui/connection.cpp"
 )
 
 target_link_libraries(3dPrinterProxy 

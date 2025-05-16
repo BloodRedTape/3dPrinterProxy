@@ -17,4 +17,10 @@ public:
     void GetInfo(const beauty::request &req, beauty::response &resp);
 
     void GetPrinters(const beauty::request &req, beauty::response &resp);
+
+    void GetPrinterValue(const beauty::request &req, beauty::response &resp);
+
+    void PostPrinterValue(const beauty::request &req, beauty::response &resp);
+
+    void PostCommand(const beauty::request &req, beauty::response &resp);
 };
