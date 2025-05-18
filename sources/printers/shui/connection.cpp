@@ -1,4 +1,5 @@
 #include "connection.hpp"
+#include "core/async.hpp"
 #include <bsl/log.hpp>
 
 DEFINE_LOG_CATEGORY(ShuiConnection)
@@ -7,9 +8,9 @@ void LogShuiConnectionIf(const boost::system::error_code &ec) {
 	LogShuiConnectionIf((bool)ec, Error, "%", ec.what());
 }
 
-ShuiPrinterConnection::ShuiPrinterConnection(boost::asio::io_context &context, const std::string &ip, std::uint16_t port, std::int32_t seconds_timeout):
-	m_TimeoutTimer(context),
-	m_Socket(context),
+ShuiPrinterConnection::ShuiPrinterConnection(const std::string &ip, std::uint16_t port, std::int32_t seconds_timeout):
+	m_TimeoutTimer(Async::Context()),
+	m_Socket(Async::Context()),
 	m_Ip(ip),
 	m_Port(port),
 	m_SecondsTimeout(seconds_timeout)
@@ -35,12 +36,16 @@ std::int32_t ShuiPrinterConnection::SecondsTimeout()const {
 	return m_SecondsTimeout;
 }
 
-void ShuiPrinterConnection::SubmitGCode(std::string gcode, GCodeSubmissionState::OnResultType on_result, std::int64_t retries) {
+void ShuiPrinterConnection::SubmitGCodeAsync(std::string gcode, GCodeSubmissionState::OnResultType on_result, std::int64_t retries) {
 	m_GCodeEngine.Submit(std::move(gcode), on_result, retries);
 }
 
 void ShuiPrinterConnection::CancelAllGCode() {
 	m_GCodeEngine.CancelAll();
+}
+
+void ShuiPrinterConnection::RunAsync() {
+	Connect();
 }
 
 void ShuiPrinterConnection::Connect() {

@@ -2,9 +2,7 @@
 #include "printers/shui/printer.hpp"
 #include <bsl/log.hpp>
 
-PrinterProxy::PrinterProxy():
-	m_Printer(m_IoContext, "192.168.1.179", 8080)
-{
+PrinterProxy::PrinterProxy(){
     m_Server.add_route("/api/v1/info")
 		.get(std::bind(&PrinterProxy::GetInfo, this, std::placeholders::_1, std::placeholders::_2));
     m_Server.add_route("/api/v1/printers")
@@ -21,10 +19,10 @@ void PrinterProxy::Listen(std::uint16_t port) {
 	m_Server.listen(port);
 }
 
-int PrinterProxy::Run() {
-	m_Printer.Run();
+void PrinterProxy::RunAsync() {
+	m_Printer.RunAsync();
 
-	m_Printer.UploadFile("test.gcode", "M0\nM300\n", true);
+	m_Printer.UploadFileAsync("test.gcode", "M0\nM300\n", true);
 
 	m_Printer.OnStateChanged = [this]() {
 		auto state_opt = m_Printer.GetPrinterState();
@@ -43,9 +41,6 @@ int PrinterProxy::Run() {
 		}
 		Print("\n");
 	};
-
-	m_IoContext.run();
-	return 0;
 }
 
 void PrinterProxy::GetInfo(const beauty::request& req, beauty::response& resp){
@@ -70,13 +65,13 @@ void PrinterProxy::PostPrinterValue(const beauty::request& req, beauty::response
 	if (type == "target_bed_temperature") {
 		std::int64_t temp = std::stoi(req.body());
 
-		m_Printer.SetTargetBedTemperature(temp);
+		m_Printer.SetTargetBedTemperatureAsync(temp);
 	}
 
 	if (type == "target_extruder_temperature") {
 		std::int64_t temp = std::stoi(req.body());
 
-		m_Printer.SetTargetExtruderTemperature(temp);
+		m_Printer.SetTargetExtruderTemperatureAsync(temp);
 	}
 }
 

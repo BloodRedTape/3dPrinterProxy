@@ -8,5 +8,9 @@ int main(int argc, char* argv[])
     PrinterProxy proxy;
     proxy.Listen(2228);
 
-    return proxy.Run();
+    proxy.RunAsync();
+
+    Async::Run();
+
+    return 0;
 }

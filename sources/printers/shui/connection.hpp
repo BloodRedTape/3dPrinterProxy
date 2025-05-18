@@ -30,23 +30,24 @@ public:
 	std::function<void()> OnConnect;
 	
 public:
-	ShuiPrinterConnection(boost::asio::io_context &context, const std::string &ip, std::uint16_t port, std::int32_t seconds_timeout = 4);
+	ShuiPrinterConnection(const std::string &ip, std::uint16_t port, std::int32_t seconds_timeout = 4);
 
 	std::int64_t Timeouts()const;
 
 	std::int32_t SecondsTimeout()const;
 
-	void SubmitGCode(std::string gcode, GCodeSubmissionState::OnResultType on_result = [](auto){}, std::int64_t retries = 0);
+	void SubmitGCodeAsync(std::string gcode, GCodeSubmissionState::OnResultType on_result = [](auto){}, std::int64_t retries = 0);
 
 	void CancelAllGCode();
 
 	bool GCodeDone()const {
 		return m_GCodeEngine.AllDone();
 	}
-	
-	void Connect();
+
+	void RunAsync();
 
 private:
+	void Connect();
 
 	void HandleConnect(const boost::system::error_code& error);
 

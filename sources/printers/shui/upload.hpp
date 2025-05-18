@@ -8,7 +8,6 @@ public:
     using CompletionCallback = std::function<void(bool success, const std::string& message)>;
 
 private:
-    boost::asio::io_context& m_IoContext;
     boost::asio::ip::tcp::socket m_Socket;
     std::string m_Ip;
     std::string m_Filename;
@@ -21,7 +20,7 @@ private:
     boost::beast::http::response<boost::beast::http::string_body> m_Response;
 
 public:
-    ShuiAsyncUpload(boost::asio::io_context& io_context, const std::string& ip, const std::string& filename, const std::string& content, bool start_printing = false, CompletionCallback callback = nullptr);
+    ShuiAsyncUpload(const std::string& ip, const std::string& filename, const std::string& content, bool start_printing = false, CompletionCallback callback = nullptr);
     
     void Run();
 

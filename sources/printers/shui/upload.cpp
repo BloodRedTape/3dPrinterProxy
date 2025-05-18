@@ -1,12 +1,12 @@
 #include "upload.hpp"
+#include "core/async.hpp"
 #include <random>
 #include <sstream>
 #include <iomanip>
 #include <bsl/log.hpp>
 
-ShuiAsyncUpload::ShuiAsyncUpload(boost::asio::io_context& io_context, const std::string& ip, const std::string& filename, const std::string& content, bool start_printing, CompletionCallback callback): 
-    m_IoContext(io_context), 
-    m_Socket(io_context), 
+ShuiAsyncUpload::ShuiAsyncUpload(const std::string& ip, const std::string& filename, const std::string& content, bool start_printing, CompletionCallback callback): 
+    m_Socket(Async::Context()), 
     m_Ip(ip), 
     m_Filename(filename), 
     m_Content(content), 

@@ -11,20 +11,19 @@ void LogShuiIf(const boost::system::error_code &ec) {
 	LogShuiIf((bool)ec, Error, "%", ec.what());
 }
 
-ShuiPrinter::ShuiPrinter(boost::asio::io_context &context, std::string ip, std::uint16_t port):
-    m_IoContext(context),
+ShuiPrinter::ShuiPrinter(std::string ip, std::uint16_t port):
 	m_Ip(std::move(ip)),
 	m_Port(port)
 {
-	m_Connection = std::make_unique<ShuiPrinterConnection>(m_IoContext, m_Ip, m_Port);
+	m_Connection = std::make_unique<ShuiPrinterConnection>(m_Ip, m_Port);
 	m_Connection->OnConnect = std::bind(&ShuiPrinter::OnConnectionConnect, this);
 	m_Connection->OnTick = std::bind(&ShuiPrinter::OnConnectionTick, this);
 	m_Connection->OnTimeout = std::bind(&ShuiPrinter::OnConnectionTimeout, this, std::placeholders::_1);
 	m_Connection->OnPrinterLine = std::bind(&ShuiPrinter::OnConnectionPrinterLine, this, std::placeholders::_1, std::placeholders::_2);
 }
 
-void ShuiPrinter::Run(){
-	m_Connection->Connect();
+void ShuiPrinter::RunAsync(){
+	m_Connection->RunAsync();
 
 //#define RETRIES_TEST
 #ifdef RETRIES_TEST
@@ -56,16 +55,16 @@ void ShuiPrinter::Run(){
 #endif
 }
 
-void ShuiPrinter::Identify() {
-    m_Connection->SubmitGCode("M300", GCodeExecutionEngine::DefaultGCodeCallback, 1);
+void ShuiPrinter::IdentifyAsync() {
+    m_Connection->SubmitGCodeAsync("M300", GCodeExecutionEngine::DefaultGCodeCallback, 1);
 }
 
-void ShuiPrinter::SetTargetBedTemperature(std::int64_t temperature){
-    m_Connection->SubmitGCode(Format("M140 S%", temperature), GCodeExecutionEngine::DefaultGCodeCallback, 1);
+void ShuiPrinter::SetTargetBedTemperatureAsync(std::int64_t temperature){
+    m_Connection->SubmitGCodeAsync(Format("M140 S%", temperature), GCodeExecutionEngine::DefaultGCodeCallback, 1);
 }
 
-void ShuiPrinter::SetTargetExtruderTemperature(std::int64_t temperature){
-    m_Connection->SubmitGCode(Format("M104 T0 S%", temperature), GCodeExecutionEngine::DefaultGCodeCallback, 1);
+void ShuiPrinter::SetTargetExtruderTemperatureAsync(std::int64_t temperature){
+    m_Connection->SubmitGCodeAsync(Format("M104 T0 S%", temperature), GCodeExecutionEngine::DefaultGCodeCallback, 1);
 }
 
 static std::string NormalizeMessage(std::string message) {
@@ -79,42 +78,42 @@ static std::string NormalizeMessage(std::string message) {
     return message;
 }
 
-void ShuiPrinter::SetLCDMessage(std::string message) {
-    m_Connection->SubmitGCode(Format("M117 %", NormalizeMessage(message)), GCodeExecutionEngine::DefaultGCodeCallback, 1);
+void ShuiPrinter::SetLCDMessageAsync(std::string message) {
+    m_Connection->SubmitGCodeAsync(Format("M117 %", NormalizeMessage(message)), GCodeExecutionEngine::DefaultGCodeCallback, 1);
 }
 
-void ShuiPrinter::SetFanSpeed(std::uint8_t speed){
-    m_Connection->SubmitGCode(Format("M106 S%", (int)speed), GCodeExecutionEngine::DefaultGCodeCallback, 1);
+void ShuiPrinter::SetFanSpeedAsync(std::uint8_t speed){
+    m_Connection->SubmitGCodeAsync(Format("M106 S%", (int)speed), GCodeExecutionEngine::DefaultGCodeCallback, 1);
 }
-void ShuiPrinter::PauseUntillUserInput(std::string message){
-    m_Connection->SubmitGCode(Format("M0 %", message), GCodeExecutionEngine::DefaultGCodeCallback, 1);
-}
-
-void ShuiPrinter::PausePrint(){
-    m_Connection->SubmitGCode("M25", GCodeExecutionEngine::DefaultGCodeCallback, 1);
+void ShuiPrinter::PauseUntillUserInputAsync(std::string message){
+    m_Connection->SubmitGCodeAsync(Format("M0 %", message), GCodeExecutionEngine::DefaultGCodeCallback, 1);
 }
 
-void ShuiPrinter::ResumePrint(){
-    m_Connection->SubmitGCode("M24", GCodeExecutionEngine::DefaultGCodeCallback, 1);
+void ShuiPrinter::PausePrintAsync(){
+    m_Connection->SubmitGCodeAsync("M25", GCodeExecutionEngine::DefaultGCodeCallback, 1);
 }
 
-void ShuiPrinter::ReleaseMotors() {
-    m_Connection->SubmitGCode("M84", GCodeExecutionEngine::DefaultGCodeCallback, 1);
+void ShuiPrinter::ResumePrintAsync(){
+    m_Connection->SubmitGCodeAsync("M24", GCodeExecutionEngine::DefaultGCodeCallback, 1);
 }
 
-void ShuiPrinter::CancelPrint() {
+void ShuiPrinter::ReleaseMotorsAsync() {
+    m_Connection->SubmitGCodeAsync("M84", GCodeExecutionEngine::DefaultGCodeCallback, 1);
+}
+
+void ShuiPrinter::CancelPrintAsync() {
     //XXX find a way to reliably send a gcode sequence
-    PausePrint();
+    PausePrintAsync();
     //XXX stop print
-    m_Connection->SubmitGCode("G91", GCodeExecutionEngine::DefaultGCodeCallback, 1);
-    m_Connection->SubmitGCode("G1 Z20", GCodeExecutionEngine::DefaultGCodeCallback, 1);
-    m_Connection->SubmitGCode("M84", GCodeExecutionEngine::DefaultGCodeCallback, 1);
-    ReleaseMotors();
-    SetFanSpeed(0);
+    m_Connection->SubmitGCodeAsync("G91", GCodeExecutionEngine::DefaultGCodeCallback, 1);
+    m_Connection->SubmitGCodeAsync("G1 Z20", GCodeExecutionEngine::DefaultGCodeCallback, 1);
+    m_Connection->SubmitGCodeAsync("M84", GCodeExecutionEngine::DefaultGCodeCallback, 1);
+    ReleaseMotorsAsync();
+    SetFanSpeedAsync(0);
 }
 
-void ShuiPrinter::UploadFile(const std::string& filename, const std::string& content, bool autostart){
-    std::make_shared<ShuiAsyncUpload>(m_IoContext, m_Ip, filename, content, autostart, [](auto f, auto s) {
+void ShuiPrinter::UploadFileAsync(const std::string& filename, const std::string& content, bool autostart){
+    std::make_shared<ShuiAsyncUpload>(m_Ip, filename, content, autostart, [](auto f, auto s) {
         Println("Result: %", s);
     })->Run();
 }
@@ -145,16 +144,16 @@ void ShuiPrinter::OnConnectionPrinterLine(const std::string& line, std::int64_t 
 	if (!GCodeExecutionEngine::IsSystemLine(line))
 		return;
 
-    SubmitReportSequence();
+    SubmitReportSequenceAsync();
 
     UpdateStateFromSystemLine(line);
 }
 
-void ShuiPrinter::SubmitReportSequence() {
+void ShuiPrinter::SubmitReportSequenceAsync() {
     if(!m_Connection->GCodeDone())
         return;
 
-    m_Connection->SubmitGCode("M27", [&](std::optional<std::string> result) {
+    m_Connection->SubmitGCodeAsync("M27", [&](std::optional<std::string> result) {
         if(!result.has_value()){
 #if SHUI_VERBOSE_LOGGING
             Println("\tM27 Failed");
@@ -169,7 +168,7 @@ void ShuiPrinter::SubmitReportSequence() {
         UpdateStateFromSdCardStatus(result.value());
     });
 
-    m_Connection->SubmitGCode("M27 C", [&](std::optional<std::string> result) {
+    m_Connection->SubmitGCodeAsync("M27 C", [&](std::optional<std::string> result) {
         if(!result.has_value()){
 #if SHUI_VERBOSE_LOGGING
             Println("\tM27 C Failed");
@@ -183,7 +182,7 @@ void ShuiPrinter::SubmitReportSequence() {
         UpdateStateFromSelectedFile(result.value());
     });
 
-    m_Connection->SubmitGCode("M123", [&](std::optional<std::string> result) {
+    m_Connection->SubmitGCodeAsync("M123", [&](std::optional<std::string> result) {
         if(!result.has_value()){
 #if SHUI_VERBOSE_LOGGING
             Println("\tM123 Failed");
