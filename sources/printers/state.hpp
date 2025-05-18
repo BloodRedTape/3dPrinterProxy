@@ -1,8 +1,6 @@
 #pragma once
 
-#include <string>
-#include <optional>
-#include <functional>
+#include "pch/std.hpp"
 
 enum class PrintStatus {
 	Busy,

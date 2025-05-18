@@ -1,9 +1,7 @@
 #pragma once
 
-#include <memory>
 #include "printers/shui/gcode.hpp"
-#include <boost/asio/ip/tcp.hpp>
-#include <boost/asio/deadline_timer.hpp>
+#include "pch/asio.hpp"
 
 class ShuiPrinterConnection: public std::enable_shared_from_this<ShuiPrinterConnection> {
 public:

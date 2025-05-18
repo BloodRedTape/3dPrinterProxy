@@ -15,6 +15,7 @@ add_executable(3dPrinterProxy
 	"./sources/printers/shui/printer.cpp"
 	"./sources/printers/shui/gcode.cpp" 
 	"./sources/printers/shui/connection.cpp"
+	"./sources/printers/shui/upload.cpp"
 )
 
 target_link_libraries(3dPrinterProxy 
@@ -22,6 +23,12 @@ target_link_libraries(3dPrinterProxy
 	PUBLIC beauty::beauty 
 	PUBLIC boost::boost 
 	PUBLIC nlohmann_json::nlohmann_json
+)
+
+target_precompile_headers(3dPrinterProxy PRIVATE 
+	"./sources/pch/asio.hpp"
+	"./sources/pch/beauty.hpp"
+	"./sources/pch/std.hpp"
 )
 
 target_include_directories(3dPrinterProxy PRIVATE "./sources")

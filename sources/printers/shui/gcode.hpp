@@ -1,9 +1,6 @@
 #pragma once
 
-#include <cassert>
-#include <string>
-#include <functional>
-#include <optional>
+#include "pch/std.hpp"
 #include <queue>
 
 #define SHUI_VERBOSE_LOGGING 0

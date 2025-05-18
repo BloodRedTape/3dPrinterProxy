@@ -1,13 +1,14 @@
 #pragma once
 
-#include <string>
-#include <functional>
+#include "pch/std.hpp"
 #include "printers/state.hpp"
 #include "printers/shui/connection.hpp"
+#include "printers/shui/upload.hpp"
 
 namespace boost::asio { class io_context; }
 
 class ShuiPrinter {
+	boost::asio::io_context& m_IoContext;
 	std::string m_Ip;
 	std::uint16_t m_Port = 0;
 
@@ -19,9 +20,9 @@ public:
 	std::function<void()> OnStateChanged;
 public:
 	
-	ShuiPrinter(std::string ip, std::uint16_t port);
+	ShuiPrinter(boost::asio::io_context &context, std::string ip, std::uint16_t port);
 
-	void RunStatePollingAsync(boost::asio::io_context &context);
+	void Run();
 
 	virtual void Identify();
 
@@ -42,6 +43,8 @@ public:
 	virtual void ReleaseMotors();
 
 	virtual void CancelPrint();
+
+	virtual void UploadFile(const std::string &filename, const std::string &content, bool autostart = false);
 
 	void OnConnectionConnect();
 

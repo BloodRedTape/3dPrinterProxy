@@ -1,5 +1,4 @@
 #include "connection.hpp"
-#include <boost/date_time/posix_time/posix_time.hpp>
 #include <bsl/log.hpp>
 
 DEFINE_LOG_CATEGORY(ShuiConnection)

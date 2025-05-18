@@ -1,5 +1,6 @@
 #include "printer.hpp"
 #include <boost/algorithm/string.hpp>
+#include "upload.hpp"
 #include <chrono>
 #include <queue>
 #include <bsl/log.hpp>
@@ -10,17 +11,19 @@ void LogShuiIf(const boost::system::error_code &ec) {
 	LogShuiIf((bool)ec, Error, "%", ec.what());
 }
 
-ShuiPrinter::ShuiPrinter(std::string ip, std::uint16_t port):
+ShuiPrinter::ShuiPrinter(boost::asio::io_context &context, std::string ip, std::uint16_t port):
+    m_IoContext(context),
 	m_Ip(std::move(ip)),
 	m_Port(port)
-{}
-
-void ShuiPrinter::RunStatePollingAsync(boost::asio::io_context & context){
-	m_Connection = std::make_unique<ShuiPrinterConnection>(context, m_Ip, m_Port);
+{
+	m_Connection = std::make_unique<ShuiPrinterConnection>(m_IoContext, m_Ip, m_Port);
 	m_Connection->OnConnect = std::bind(&ShuiPrinter::OnConnectionConnect, this);
 	m_Connection->OnTick = std::bind(&ShuiPrinter::OnConnectionTick, this);
 	m_Connection->OnTimeout = std::bind(&ShuiPrinter::OnConnectionTimeout, this, std::placeholders::_1);
 	m_Connection->OnPrinterLine = std::bind(&ShuiPrinter::OnConnectionPrinterLine, this, std::placeholders::_1, std::placeholders::_2);
+}
+
+void ShuiPrinter::Run(){
 	m_Connection->Connect();
 
 //#define RETRIES_TEST
@@ -108,6 +111,12 @@ void ShuiPrinter::CancelPrint() {
     m_Connection->SubmitGCode("M84", GCodeExecutionEngine::DefaultGCodeCallback, 1);
     ReleaseMotors();
     SetFanSpeed(0);
+}
+
+void ShuiPrinter::UploadFile(const std::string& filename, const std::string& content, bool autostart){
+    std::make_shared<ShuiAsyncUpload>(m_IoContext, m_Ip, filename, content, autostart, [](auto f, auto s) {
+        Println("Result: %", s);
+    })->Run();
 }
 
 void ShuiPrinter::OnConnectionConnect() {

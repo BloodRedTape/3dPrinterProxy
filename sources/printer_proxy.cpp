@@ -1,9 +1,10 @@
 #include "printer_proxy.hpp"
 #include "printers/shui/printer.hpp"
 #include <bsl/log.hpp>
-#include <beauty/exception.hpp>
 
-PrinterProxy::PrinterProxy(){
+PrinterProxy::PrinterProxy():
+	m_Printer(m_IoContext, "192.168.1.179", 8080)
+{
     m_Server.add_route("/api/v1/info")
 		.get(std::bind(&PrinterProxy::GetInfo, this, std::placeholders::_1, std::placeholders::_2));
     m_Server.add_route("/api/v1/printers")
@@ -20,17 +21,13 @@ void PrinterProxy::Listen(std::uint16_t port) {
 	m_Server.listen(port);
 }
 
-ShuiPrinter &GetPrinter(){
-	static ShuiPrinter printer("192.168.1.179", 8080);
-	return printer;
-}
-
 int PrinterProxy::Run() {
+	m_Printer.Run();
 
-	GetPrinter().RunStatePollingAsync(m_IoContext);
+	m_Printer.UploadFile("test.gcode", "M0\nM300\n", true);
 
-	GetPrinter().OnStateChanged = []() {
-		auto state_opt = GetPrinter().GetPrinterState();
+	m_Printer.OnStateChanged = [this]() {
+		auto state_opt = m_Printer.GetPrinterState();
 
 		if (!state_opt.has_value()) {
 			return Println("[Disconnected]");
@@ -73,13 +70,13 @@ void PrinterProxy::PostPrinterValue(const beauty::request& req, beauty::response
 	if (type == "target_bed_temperature") {
 		std::int64_t temp = std::stoi(req.body());
 
-		GetPrinter().SetTargetBedTemperature(temp);
+		m_Printer.SetTargetBedTemperature(temp);
 	}
 
 	if (type == "target_extruder_temperature") {
 		std::int64_t temp = std::stoi(req.body());
 
-		GetPrinter().SetTargetExtruderTemperature(temp);
+		m_Printer.SetTargetExtruderTemperature(temp);
 	}
 }
 

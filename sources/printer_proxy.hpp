@@ -1,12 +1,15 @@
 #pragma once
 
-#include <beauty/server.hpp>
+#include "pch/beauty.hpp"
+#include "printers/shui/printer.hpp"
 
 class PrinterProxy {
 private:
     boost::asio::io_context m_IoContext;
     beauty::application m_BeautyApplication{m_IoContext};
     beauty::server m_Server{m_BeautyApplication};
+
+    ShuiPrinter m_Printer;
 public:
     PrinterProxy();
 
