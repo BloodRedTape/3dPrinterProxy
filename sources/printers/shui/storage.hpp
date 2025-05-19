@@ -3,19 +3,15 @@
 #include "printers/file.hpp"
 
 struct GCodeFile {
-	std::string Filename;
-
-	GCodeFileRuntimeData RuntimeData;
-
-	std::string Content;
-	std::string ContentHash;
+	std::size_t ContentHash = 0;
 };
 
 class ShuiPrinterStorage {
 	std::string m_Ip;
-	//std::unordered_map<std::string, GCodeFileMetadata> m_ContentHashToMetadata;
-	//std::unordered_map<std::string, GCodeFile> m_StoredFiles;
 
+	//std::unordered_map<std::size_t, GCodeFileMetadata> m_ContentHashToMetadata;
+	std::unordered_map<std::size_t, GCodeFileRuntimeData> m_ContentHashToRuntimeData;
+	std::unordered_map<std::string, GCodeFile> m_FilenameToFile;
 	std::unordered_map<std::string, std::string> m_83ToLongFilename;
 public:
 	ShuiPrinterStorage(const std::string& ip);
@@ -27,6 +23,8 @@ public:
 	//const GCodeFileMetadata *GetMetadata(const std::string& content_hash)const;
 
 	//std::vector<std::string> GetStoredFiles()const;
+
+	const GCodeFileRuntimeData *GetRuntimeData(const std::string &long_filename)const;
 
 	const std::string *GetLongFilename(const std::string &_83_filename)const;
 

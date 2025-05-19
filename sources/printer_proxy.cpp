@@ -38,7 +38,7 @@ void PrinterProxy::RunAsync() {
 		
 		if (state.Print.has_value()) {
 			auto print = state.Print.value();
-			Print("[filename %, progress %, status %, bytes %/%]", print.Filename, print.Progress, print.Status == PrintStatus::Busy ? "Busy" : "Printing", print.CurrentBytesPrinted, print.TargetBytesPrinted);
+			Print("[filename %, progress %, layer %, height %, status %, bytes %/%]", print.Filename, print.Progress, print.Layer, print.Height, print.Status == PrintStatus::Busy ? "Busy" : "Printing", print.CurrentBytesPrinted, print.TargetBytesPrinted);
 		}
 		Print("\n");
 	};

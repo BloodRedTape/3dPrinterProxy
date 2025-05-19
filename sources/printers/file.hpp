@@ -50,18 +50,42 @@ struct GCodeFileMetadata {
 };
 
 struct GCodeRuntimeState {
-	float Percent;
-	std::int64_t Layer;
-	float Height;
+	float Percent = 0.f;
+	std::int64_t Layer = 0;
+	float Height = 0.f;
 	//std::int32_t FillamentIndex;
+
+	bool operator==(const GCodeRuntimeState& other)const{
+		return Percent == other.Percent && Layer == other.Layer && Height == other.Height;
+	}
+
+	bool operator!=(const GCodeRuntimeState& other)const{
+		return !(*this == other);
+	}
 };
 
 struct GCodeFileRuntimeData {
-	//...	
+	std::vector<GCodeRuntimeState> States;
+	//Can't imagine file more that 4gigs
+	std::vector<std::int32_t> Index;
 
 	GCodeRuntimeState GetStateNear(std::int64_t printed_byte)const {
-		assert(false);
-		return {};
+		if(printed_byte == 0)
+			return States.size() ? States.front() : GCodeRuntimeState();
+		
+		for (int i = 0; i<Index.size(); i++) {
+			std::int32_t byte = Index[i];
+
+			if (byte < printed_byte)
+				continue;
+			
+			if(i >= States.size())
+				return States.size() ? States.back() : GCodeRuntimeState();
+			
+			return States[i];
+		}
+
+		return States.size() ? States.back() : GCodeRuntimeState();
 	}
 };
 

@@ -330,7 +330,23 @@ void ShuiPrinter::UpdateStateFromSdCardStatus(const std::string& line) {
         print.CurrentBytesPrinted = current;
         print.TargetBytesPrinted = target;
 
-        print.Progress = float(print.CurrentBytesPrinted) / float(print.TargetBytesPrinted) * 100.f;
+        const GCodeFileRuntimeData *runtime = m_Storage.GetRuntimeData(print.Filename);
+
+        if (runtime) {
+            GCodeRuntimeState state = runtime->GetStateNear(current);
+
+            if(print.Progress != state.Percent)
+                changed = true;
+            if(print.Layer != state.Layer)
+                changed = true;
+            if(print.Height != state.Height)
+                changed = true;
+
+            print.Progress = state.Percent;
+            print.Layer = state.Layer;
+            print.Height = state.Height;
+        }
+
     }catch(const std::exception& e){ }
     
     if(changed)
@@ -362,7 +378,7 @@ void ShuiPrinter::UpdateStateFromSelectedFile(const std::string& line) {
 
     bool printing = filename != NoFile;
 
-    if (!State().Print.has_value() && printing) {
+    if (!State().Print.has_value() && printing && filename.size()) {
         State().Print = PrintState();
         State().Print.value().Filename = filename;
 
@@ -370,7 +386,7 @@ void ShuiPrinter::UpdateStateFromSelectedFile(const std::string& line) {
         return;
     }
 
-    if (State().Print.has_value() && printing && State().Print.value().Filename != filename) {
+    if (State().Print.has_value() && printing && State().Print.value().Filename != filename && filename.size()) {
         State().Print = PrintState();
         State().Print.value().Filename = filename;
 

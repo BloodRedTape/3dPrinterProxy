@@ -6,12 +6,63 @@
 #include <bsl/log.hpp>
 #include "pch/std.hpp"
 
+static GCodeFileRuntimeData ParseFromFile(const std::string& content) {
+    std::stringstream stream(content);
+
+    GCodeFileRuntimeData result;
+    
+    GCodeRuntimeState state;
+
+    std::string line;
+    while (std::getline(stream, line)) {
+        static constexpr const char *SetPrintProgressPrefix = "M73 P";
+        static constexpr const char *SetPrintLayerPrefix = "M2033.1 L";
+        static constexpr const char *SetPrintHeightPrefix = ";Z:";
+
+        GCodeRuntimeState new_state = state;
+
+        std::string::size_type pos = line.find(SetPrintProgressPrefix);
+        
+        if (pos != std::string::npos){
+        
+            try{
+                new_state.Percent = std::stoi(line.substr(pos + std::strlen(SetPrintProgressPrefix)));
+            }catch(...){ }
+        }
+
+        pos = line.find(SetPrintLayerPrefix);
+        
+        if (pos != std::string::npos){
+        
+            try{
+                new_state.Layer = std::stoi(line.substr(pos + std::strlen(SetPrintLayerPrefix)));
+            }catch(...){ }
+        }
+
+        pos = line.find(SetPrintHeightPrefix);
+        
+        if (pos != std::string::npos){
+        
+            try{
+                new_state.Height = std::round(std::stof(line.substr(pos + std::strlen(SetPrintHeightPrefix))) * 10.f) / 10.f;
+            }catch(...){ }
+        }
+
+        if (new_state != state) {
+            state = new_state;
+            result.Index.push_back(stream.tellg());
+            result.States.push_back(state);
+        }
+    }
+
+    return result;
+}
+
 ShuiPrinterStorage::ShuiPrinterStorage(const std::string& ip):
     m_Ip(ip)
 {}
 
 void ShuiPrinterStorage::UploadGCodeFileAsync(const std::string& filename, const std::string& content, std::function<void(bool)> callback) {
-
     auto OnUploaded = [=](bool success, std::string result) {
         defer{
             Println("Result %, Filename: %, 8.3: %", result, filename, *Get83Filename(filename));
@@ -35,10 +86,22 @@ void ShuiPrinterStorage::UploadGCodeFileAsync(const std::string& filename, const
             m_83ToLongFilename.emplace(_83, filename);
         }
         
+        //XXX replace with bette
+        std::size_t hash = std::hash<std::string>()(content);
+        auto runtime_data = ParseFromFile(content);
 
+        m_ContentHashToRuntimeData.emplace(hash, std::move(runtime_data));
+        m_FilenameToFile.emplace(filename, GCodeFile{hash});
     };
 
     std::make_shared<ShuiUpload>(m_Ip, filename, content, true, OnUploaded)->RunAsync();
+}
+
+const GCodeFileRuntimeData* ShuiPrinterStorage::GetRuntimeData(const std::string& long_filename) const{
+    if(!m_FilenameToFile.count(long_filename) || !m_ContentHashToRuntimeData.count(m_FilenameToFile.at(long_filename).ContentHash))
+        return nullptr;
+
+    return &m_ContentHashToRuntimeData.at(m_FilenameToFile.at(long_filename).ContentHash);
 }
 
 const std::string* ShuiPrinterStorage::GetLongFilename(const std::string& _83_name)const {

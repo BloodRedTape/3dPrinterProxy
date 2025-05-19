@@ -12,6 +12,8 @@ struct PrintState {
 	float Progress = 0.f;
 	std::int64_t CurrentBytesPrinted = 0;
 	std::int64_t TargetBytesPrinted = 0;
+	std::int64_t Layer = 0;
+	float Height = 0.f;
 	PrintStatus Status = PrintStatus::Busy;
 	//Remaining time
 };
