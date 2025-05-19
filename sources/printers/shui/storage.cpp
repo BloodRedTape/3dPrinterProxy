@@ -9,6 +9,8 @@
 
 DEFINE_LOG_CATEGORY(ShuiStorage)
 
+#define ALWAYS_UPDATE_METADATA 1
+
 static GCodeFileRuntimeData ParseFromFile(const std::string& content) {
     std::stringstream stream(content);
 
@@ -61,9 +63,9 @@ static GCodeFileRuntimeData ParseFromFile(const std::string& content) {
     return result;
 }
 
-ShuiPrinterStorage::ShuiPrinterStorage(const std::string& ip, const std::string &filepath):
+ShuiPrinterStorage::ShuiPrinterStorage(const std::string& ip, const std::filesystem::path &data_path):
     m_Ip(ip),
-    m_Filepath(filepath)
+    m_DataPath(data_path)
 {
     if (!LoadFromFile()) {
         LogShuiStorage(Warning, "Can't load storage from file");
@@ -71,41 +73,15 @@ ShuiPrinterStorage::ShuiPrinterStorage(const std::string& ip, const std::string 
 }
 
 void ShuiPrinterStorage::UploadGCodeFileAsync(const std::string& filename, const std::string& content, std::function<void(bool)> callback) {
+
     auto OnUploaded = [=](bool success, std::string result) {
         defer{
-            Println("Result %, Filename: %, 8.3: %", result, filename, *Get83Filename(filename));
+            Println("Result %, Filename: %, 8.3: %", result, filename, std::safe(Get83Filename(filename)));
             std::call(callback, success);
         };
-
-        if (!success) 
-            return;
-
-        if(ExistsLong(filename)){
-            //overwrite
-            Get83Filename(filename);
-        }else{
-            std::string _83 = Get83(filename);
-
-            if (!_83.size()) {
-                std::call(callback, false);
-                return;
-            }
-
-            m_83ToLongFilename.emplace(_83, filename);
-        }
         
-        //XXX replace with bette
-        std::size_t hash = std::hash<std::string>()(content);
-        auto runtime_data = ParseFromFile(content);
-
-        m_ContentHashToRuntimeData.emplace(hash, std::move(runtime_data));
-
-        if(m_FilenameToFile.count(filename))
-            m_ContentHashToRuntimeData.erase(m_FilenameToFile.at(filename).ContentHash);
-            
-        m_FilenameToFile.emplace(filename, GCodeFile{hash});
-
-        SaveToFile();
+        if(success || ALWAYS_UPDATE_METADATA)
+            OnFileUploaded(filename, content);
     };
 
     std::make_shared<ShuiUpload>(m_Ip, filename, content, true, OnUploaded)->RunAsync();
@@ -219,12 +195,45 @@ std::string ShuiPrinterStorage::ConvertTo83Revisioned(const std::string& long_fi
     return base + revision_prefix + extension;
 }
 
+bool ShuiPrinterStorage::OnFileUploaded(const std::string& filename, const std::string& content){
+    //Overwrite old file
+    if(ExistsLong(filename)){
+        if(m_FilenameToFile.count(filename)) {
+            m_ContentHashToRuntimeData.erase(m_FilenameToFile.at(filename).ContentHash);
+        }
+    //Crete new file
+    }else{
+        std::string _83 = Get83(filename);
+
+        if (!_83.size()) 
+            return false;
+
+        m_83ToLongFilename.emplace(_83, filename);
+    }
+    
+    //XXX replace with bette
+    std::size_t hash = std::hash<std::string>()(content);
+    auto runtime_data = ParseFromFile(content);
+
+    m_ContentHashToRuntimeData.emplace(hash, std::move(runtime_data));
+    
+    m_FilenameToFile.emplace(filename, GCodeFile{hash});
+
+    SaveToFile();
+
+    return true;
+}
+
+static std::string DbFilepath(const std::filesystem::path& data_path) {
+    return (data_path / "all.json").string();
+}
+
 void ShuiPrinterStorage::SaveToFile()const{
-    WriteEntireFile(m_Filepath, nlohmann::json(*this).dump());
+    WriteEntireFile(DbFilepath(m_DataPath), nlohmann::json(*this).dump());
 }
 
 bool ShuiPrinterStorage::LoadFromFile(){
-    auto content = ReadEntireFile(m_Filepath);
+    auto content = ReadEntireFile(DbFilepath(m_DataPath));
     
     try{
         auto json = nlohmann::json::parse(content, nullptr, false, false);

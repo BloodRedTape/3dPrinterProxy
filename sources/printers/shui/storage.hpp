@@ -10,14 +10,14 @@ struct GCodeFile {
 
 class ShuiPrinterStorage {
 	std::string m_Ip;
-	std::string m_Filepath;
+	std::filesystem::path m_DataPath;
 
 	//std::unordered_map<std::size_t, GCodeFileMetadata> m_ContentHashToMetadata;
 	std::unordered_map<std::size_t, GCodeFileRuntimeData> m_ContentHashToRuntimeData;
 	std::unordered_map<std::string, GCodeFile> m_FilenameToFile;
 	std::unordered_map<std::string, std::string> m_83ToLongFilename;
 public:
-	ShuiPrinterStorage(const std::string& ip, const std::string &filepath);
+	ShuiPrinterStorage(const std::string& ip, const std::filesystem::path &data_path);
 
 	void UploadGCodeFileAsync(const std::string &filename, const std::string& content, std::function<void(bool)> callback);
 
@@ -42,6 +42,9 @@ public:
 	std::string Get83(const std::string& long_filename)const;
 
 	std::string ConvertTo83Revisioned(const std::string& long_filename, std::int16_t revision)const;
+
+private:
+	bool OnFileUploaded(const std::string &filename, const std::string &content);
 
 	void SaveToFile()const;
 

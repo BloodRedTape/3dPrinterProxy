@@ -11,10 +11,11 @@ void LogShuiIf(const boost::system::error_code &ec) {
 	LogShuiIf((bool)ec, Error, "%", ec.what());
 }
 
-ShuiPrinter::ShuiPrinter(std::string ip, std::uint16_t port):
+ShuiPrinter::ShuiPrinter(std::string ip, std::uint16_t port, const std::filesystem::path &data_path):
+    m_DataPath(data_path),
 	m_Ip(std::move(ip)),
 	m_Port(port),
-    m_Storage(m_Ip, "./shui/storage.json")
+    m_Storage(m_Ip, data_path / "storage")
 {
 	m_Connection = std::make_unique<ShuiPrinterConnection>(m_Ip, m_Port);
 	m_Connection->OnConnect = std::bind(&ShuiPrinter::OnConnectionConnect, this);

@@ -9,7 +9,7 @@ private:
     beauty::application m_BeautyApplication{Async::Context()};
     beauty::server m_Server{m_BeautyApplication};
 
-    ShuiPrinter m_Printer{"192.168.1.179", 8080};
+    ShuiPrinter m_Printer{"192.168.1.179", 8080, "./printers/twotreesbluer"};
 public:
     PrinterProxy();
 

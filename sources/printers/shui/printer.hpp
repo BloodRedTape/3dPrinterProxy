@@ -8,6 +8,7 @@
 namespace boost::asio { class io_context; }
 
 class ShuiPrinter {
+	std::filesystem::path m_DataPath;
 	std::string m_Ip;
 	std::uint16_t m_Port = 0;
 
@@ -20,7 +21,7 @@ public:
 	std::function<void()> OnStateChanged;
 public:
 	
-	ShuiPrinter(std::string ip, std::uint16_t port);
+	ShuiPrinter(std::string ip, std::uint16_t port, const std::filesystem::path &data_path);
 
 	void RunAsync();
 
