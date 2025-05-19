@@ -13,6 +13,9 @@ PrinterProxy::PrinterProxy(){
     m_Server.add_route("/api/v1/printers/:id/values/:type")
 		.get(std::bind(&PrinterProxy::GetPrinterValue, this, std::placeholders::_1, std::placeholders::_2))
 		.post(std::bind(&PrinterProxy::PostPrinterValue, this, std::placeholders::_1, std::placeholders::_2));
+
+    m_Server.add_route("/api/v1/printers/:id/files/:filename")
+		.post(std::bind(&PrinterProxy::PostStorageUpload, this, std::placeholders::_1, std::placeholders::_2));
 }
 
 void PrinterProxy::Listen(std::uint16_t port) {
@@ -21,8 +24,6 @@ void PrinterProxy::Listen(std::uint16_t port) {
 
 void PrinterProxy::RunAsync() {
 	m_Printer.RunAsync();
-
-	m_Printer.UploadFileAsync("test.gcode", "M0\nM300\n", true);
 
 	m_Printer.OnStateChanged = [this]() {
 		auto state_opt = m_Printer.GetPrinterState();
@@ -75,6 +76,15 @@ void PrinterProxy::PostPrinterValue(const beauty::request& req, beauty::response
 	}
 }
 
-void PrinterProxy::PostCommand(const beauty::request& req, beauty::response& resp) {
+void PrinterProxy::PostStorageUpload(const beauty::request& req, beauty::response& resp){
+	if (req.a("id").as_string() != "shui")
+		throw beauty::http_error::client::bad_request();
+	
+	std::string filename = req.a("filename").as_string();
+	std::string content = req.body();
 
+	if(!filename.size())
+		throw beauty::http_error::client::bad_request();
+
+	m_Printer.Storage().UploadGCodeFileAsync(filename, content, [](auto){});
 }

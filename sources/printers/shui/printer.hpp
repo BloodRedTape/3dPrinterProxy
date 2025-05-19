@@ -3,7 +3,7 @@
 #include "pch/std.hpp"
 #include "printers/state.hpp"
 #include "printers/shui/connection.hpp"
-#include "printers/shui/upload.hpp"
+#include "printers/shui/storage.hpp"
 
 namespace boost::asio { class io_context; }
 
@@ -14,7 +14,8 @@ class ShuiPrinter {
 	std::optional<PrinterState> m_State = std::nullopt;
 
 	std::unique_ptr<ShuiPrinterConnection> m_Connection;
-
+	
+	ShuiPrinterStorage m_Storage;
 public:
 	std::function<void()> OnStateChanged;
 public:
@@ -31,6 +32,8 @@ public:
 
 	virtual void SetLCDMessageAsync(std::string message);
 
+	virtual void SetDialogMessageAsync(std::string message, std::optional<int> display_time_seconds = std::nullopt);
+
 	virtual void SetFanSpeedAsync(std::uint8_t speed);
 
 	virtual void PauseUntillUserInputAsync(std::string message = "");
@@ -42,8 +45,8 @@ public:
 	virtual void ReleaseMotorsAsync();
 
 	virtual void CancelPrintAsync();
-
-	virtual void UploadFileAsync(const std::string &filename, const std::string &content, bool autostart = false);
+	
+	virtual ShuiPrinterStorage &Storage();
 
 	void OnConnectionConnect();
 

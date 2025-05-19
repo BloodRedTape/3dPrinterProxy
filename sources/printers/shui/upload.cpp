@@ -5,7 +5,7 @@
 #include <iomanip>
 #include <bsl/log.hpp>
 
-ShuiAsyncUpload::ShuiAsyncUpload(const std::string& ip, const std::string& filename, const std::string& content, bool start_printing, CompletionCallback callback): 
+ShuiUpload::ShuiUpload(const std::string& ip, const std::string& filename, const std::string& content, bool start_printing, CompletionCallback callback): 
     m_Socket(Async::Context()), 
     m_Ip(ip), 
     m_Filename(filename), 
@@ -16,11 +16,11 @@ ShuiAsyncUpload::ShuiAsyncUpload(const std::string& ip, const std::string& filen
     m_Boundary = GenerateBoundary();
 }
 
-void ShuiAsyncUpload::Run() {
+void ShuiUpload::RunAsync() {
     Connect();
 }
 
-std::string ShuiAsyncUpload::GenerateBoundary() {
+std::string ShuiUpload::GenerateBoundary() {
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_int_distribution<> dis(0, 15);
@@ -33,7 +33,7 @@ std::string ShuiAsyncUpload::GenerateBoundary() {
     return ss.str();
 }
 
-boost::beast::http::request<boost::beast::http::string_body> ShuiAsyncUpload::CreateMultipartRequest() {
+boost::beast::http::request<boost::beast::http::string_body> ShuiUpload::CreateMultipartRequest() {
     boost::beast::http::request<boost::beast::http::string_body> req{boost::beast::http::verb::post, "/upload", 11};
     req.set(boost::beast::http::field::host, m_Ip);
     req.set(boost::beast::http::field::content_type, "multipart/form-data; boundary=" + m_Boundary);
@@ -55,7 +55,7 @@ boost::beast::http::request<boost::beast::http::string_body> ShuiAsyncUpload::Cr
     return req;
 }
 
-void ShuiAsyncUpload::Connect() {
+void ShuiUpload::Connect() {
     boost::beast::error_code ec;
     boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::make_address(m_Ip, ec), 80);
     if(ec) {
@@ -65,10 +65,10 @@ void ShuiAsyncUpload::Connect() {
         return;
     }
     
-    m_Socket.async_connect(endpoint, boost::beast::bind_front_handler(&ShuiAsyncUpload::OnConnect, shared_from_this()));
+    m_Socket.async_connect(endpoint, boost::beast::bind_front_handler(&ShuiUpload::OnConnect, shared_from_this()));
 }
 
-void ShuiAsyncUpload::OnConnect(boost::beast::error_code ec) {
+void ShuiUpload::OnConnect(boost::beast::error_code ec) {
     if(ec) {
         if (m_Callback) {
             m_Callback(false, "Connect failed: " + ec.message());
@@ -78,10 +78,10 @@ void ShuiAsyncUpload::OnConnect(boost::beast::error_code ec) {
     
     m_Request = CreateMultipartRequest();
     
-    boost::beast::http::async_write(m_Socket, m_Request, boost::beast::bind_front_handler(&ShuiAsyncUpload::OnWrite, shared_from_this()));
+    boost::beast::http::async_write(m_Socket, m_Request, boost::beast::bind_front_handler(&ShuiUpload::OnWrite, shared_from_this()));
 }
 
-void ShuiAsyncUpload::OnWrite(boost::beast::error_code ec, std::size_t bytes_transferred) {
+void ShuiUpload::OnWrite(boost::beast::error_code ec, std::size_t bytes_transferred) {
     if(ec) {
         if (m_Callback) {
             m_Callback(false, "Write failed: " + ec.message());
@@ -89,10 +89,10 @@ void ShuiAsyncUpload::OnWrite(boost::beast::error_code ec, std::size_t bytes_tra
         return;
     }
     
-    boost::beast::http::async_read(m_Socket, m_Buffer, m_Response, boost::beast::bind_front_handler(&ShuiAsyncUpload::OnRead, shared_from_this()));
+    boost::beast::http::async_read(m_Socket, m_Buffer, m_Response, boost::beast::bind_front_handler(&ShuiUpload::OnRead, shared_from_this()));
 }
 
-void ShuiAsyncUpload::OnRead(boost::beast::error_code ec, std::size_t bytes_transferred) {
+void ShuiUpload::OnRead(boost::beast::error_code ec, std::size_t bytes_transferred) {
     if(ec && ec != boost::beast::errc::not_connected) {
         if (m_Callback) {
             m_Callback(false, "Read failed: " + ec.message());
@@ -103,7 +103,7 @@ void ShuiAsyncUpload::OnRead(boost::beast::error_code ec, std::size_t bytes_tran
     bool success = m_Response.result() == boost::beast::http::status::ok || 
                   m_Response.result() == boost::beast::http::status::created || 
                   m_Response.result() == boost::beast::http::status::accepted;
-    
+
     if (m_Callback) {
         if (success) {
             m_Callback(true, "File uploaded successfully");

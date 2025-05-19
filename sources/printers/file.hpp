@@ -56,7 +56,7 @@ struct GCodeRuntimeState {
 	//std::int32_t FillamentIndex;
 };
 
-struct GCodeRuntimeMetadata {
+struct GCodeFileRuntimeData {
 	//...	
 
 	GCodeRuntimeState GetStateNear(std::int64_t printed_byte)const {

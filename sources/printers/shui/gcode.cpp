@@ -10,6 +10,14 @@ void GCodeExecutionEngine::DefaultGCodeCallback(std::optional<std::string> resul
 	}
 }
 
+void GCodeExecutionEngine::VerboseGCodeCallback(std::optional<std::string> result) {
+	if (!result.has_value()) {
+        LogGCodeExecution(Error, "GCode Command Failed");
+	} else {
+        LogGCodeExecution(Display, "GCode Result: %", result.value());
+	}
+}
+
 void GCodeExecutionEngine::Submit(std::string gcode, GCodeSubmissionState::OnResultType on_result, std::int64_t retries) {
 	m_SubmittedCommands.push({gcode, on_result, retries});
 }
@@ -41,7 +49,7 @@ void GCodeExecutionEngine::OnReadingDone(std::int64_t last_index) {
 	if(current.State == GCodeState::Enqueued){
 		LogGCodeExecutionIf(!WriteGCode, Error, "GCode writing callback is null");
 
-		if(WriteGCode) WriteGCode(current.GCode);
+		std::call(WriteGCode, current.GCode);
 #if SHUI_VERBOSE_LOGGING
 		Println("[Written]: %", current.GCode);
 #endif
@@ -65,7 +73,7 @@ void GCodeExecutionEngine::OnLine(const std::string& line, std::int64_t index) {
 			return;
 		}
 
-		if(current.OnResult) current.OnResult(result);
+		std::call(current.OnResult, result);
 
 		m_SubmittedCommands.pop();
 	};

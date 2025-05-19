@@ -13,7 +13,8 @@ void LogShuiIf(const boost::system::error_code &ec) {
 
 ShuiPrinter::ShuiPrinter(std::string ip, std::uint16_t port):
 	m_Ip(std::move(ip)),
-	m_Port(port)
+	m_Port(port),
+    m_Storage(m_Ip)
 {
 	m_Connection = std::make_unique<ShuiPrinterConnection>(m_Ip, m_Port);
 	m_Connection->OnConnect = std::bind(&ShuiPrinter::OnConnectionConnect, this);
@@ -25,6 +26,8 @@ ShuiPrinter::ShuiPrinter(std::string ip, std::uint16_t port):
 void ShuiPrinter::RunAsync(){
 	m_Connection->RunAsync();
 
+    //m_Connection->SubmitGCodeAsync("M2020", GCodeExecutionEngine::VerboseGCodeCallback, 1);
+    
 //#define RETRIES_TEST
 #ifdef RETRIES_TEST
     static std::int64_t success, fail;
@@ -82,6 +85,10 @@ void ShuiPrinter::SetLCDMessageAsync(std::string message) {
     m_Connection->SubmitGCodeAsync(Format("M117 %", NormalizeMessage(message)), GCodeExecutionEngine::DefaultGCodeCallback, 1);
 }
 
+void ShuiPrinter::SetDialogMessageAsync(std::string message, std::optional<int> display_time){
+    m_Connection->SubmitGCodeAsync(Format("M2011% %", display_time.has_value() ? Format(" S%", display_time.value()) : "", NormalizeMessage(message)), GCodeExecutionEngine::DefaultGCodeCallback, 1);
+}
+
 void ShuiPrinter::SetFanSpeedAsync(std::uint8_t speed){
     m_Connection->SubmitGCodeAsync(Format("M106 S%", (int)speed), GCodeExecutionEngine::DefaultGCodeCallback, 1);
 }
@@ -112,10 +119,8 @@ void ShuiPrinter::CancelPrintAsync() {
     SetFanSpeedAsync(0);
 }
 
-void ShuiPrinter::UploadFileAsync(const std::string& filename, const std::string& content, bool autostart){
-    std::make_shared<ShuiAsyncUpload>(m_Ip, filename, content, autostart, [](auto f, auto s) {
-        Println("Result: %", s);
-    })->Run();
+ShuiPrinterStorage& ShuiPrinter::Storage(){
+    return m_Storage;
 }
 
 void ShuiPrinter::OnConnectionConnect() {
@@ -134,7 +139,7 @@ void ShuiPrinter::OnConnectionTimeout(std::int64_t timeout) {
 	if(timeout >= 3 && m_State.has_value()){
 		m_State = std::nullopt;
 		
-		if(OnStateChanged) OnStateChanged();
+		std::call(OnStateChanged);
 
         m_Connection->CancelAllGCode();
 	}
@@ -264,7 +269,8 @@ void ShuiPrinter::UpdateStateFromSystemLine(const std::string& line) {
     }
 
     
-    if(changed && OnStateChanged) OnStateChanged();
+    if(changed) 
+        std::call(OnStateChanged);
 }
 
 void ShuiPrinter::UpdateStateFromSdCardStatus(const std::string& line) {
@@ -274,7 +280,7 @@ void ShuiPrinter::UpdateStateFromSdCardStatus(const std::string& line) {
     if (line.find(NoSdPrinting) != std::string::npos && State().Print.has_value()) {
         State().Print = std::nullopt;
 
-        if(OnStateChanged) OnStateChanged();
+        std::call(OnStateChanged);
     }
 
 
@@ -327,8 +333,8 @@ void ShuiPrinter::UpdateStateFromSdCardStatus(const std::string& line) {
         print.Progress = float(print.CurrentBytesPrinted) / float(print.TargetBytesPrinted) * 100.f;
     }catch(const std::exception& e){ }
     
-    if(changed && OnStateChanged)
-        OnStateChanged();
+    if(changed)
+        std::call(OnStateChanged);
 }
 
 void ShuiPrinter::UpdateStateFromSelectedFile(const std::string& line) {
@@ -346,6 +352,13 @@ void ShuiPrinter::UpdateStateFromSelectedFile(const std::string& line) {
 
     if (pos != std::string::npos)
         filename = filename.substr(0, pos);
+    
+    {
+        const std::string *long_filename = m_Storage.GetLongFilename(filename);
+
+        if(long_filename)
+            filename = *long_filename;
+    }
 
     bool printing = filename != NoFile;
 
@@ -353,7 +366,7 @@ void ShuiPrinter::UpdateStateFromSelectedFile(const std::string& line) {
         State().Print = PrintState();
         State().Print.value().Filename = filename;
 
-        if(OnStateChanged) OnStateChanged();
+        std::call(OnStateChanged);
         return;
     }
 
@@ -361,14 +374,14 @@ void ShuiPrinter::UpdateStateFromSelectedFile(const std::string& line) {
         State().Print = PrintState();
         State().Print.value().Filename = filename;
 
-        if(OnStateChanged) OnStateChanged();
+        std::call(OnStateChanged);
         return;
     }
 
     if (State().Print.has_value() && !printing) {
         State().Print = std::nullopt;
 
-        if(OnStateChanged) OnStateChanged();
+        std::call(OnStateChanged);
         return;
     }
 }
@@ -380,7 +393,7 @@ std::optional<PrinterState> ShuiPrinter::GetPrinterState() const {
 PrinterState& ShuiPrinter::State() {
     if(!m_State.has_value()){
         m_State = PrinterState();
-        OnStateChanged();
+        std::call(OnStateChanged);
     }
     return m_State.value();
 }

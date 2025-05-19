@@ -25,5 +25,5 @@ public:
 
     void PostPrinterValue(const beauty::request &req, beauty::response &resp);
 
-    void PostCommand(const beauty::request &req, beauty::response &resp);
+    void PostStorageUpload(const beauty::request &req, beauty::response &resp);
 };

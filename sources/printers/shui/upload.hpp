@@ -3,7 +3,7 @@
 #include "pch/std.hpp"
 #include "pch/asio.hpp"
 
-class ShuiAsyncUpload: public std::enable_shared_from_this<ShuiAsyncUpload> {
+class ShuiUpload: public std::enable_shared_from_this<ShuiUpload> {
 public:
     using CompletionCallback = std::function<void(bool success, const std::string& message)>;
 
@@ -20,9 +20,9 @@ private:
     boost::beast::http::response<boost::beast::http::string_body> m_Response;
 
 public:
-    ShuiAsyncUpload(const std::string& ip, const std::string& filename, const std::string& content, bool start_printing = false, CompletionCallback callback = nullptr);
+    ShuiUpload(const std::string& ip, const std::string& filename, const std::string& content, bool start_printing = false, CompletionCallback callback = nullptr);
     
-    void Run();
+    void RunAsync();
 
 private:
     std::string GenerateBoundary();

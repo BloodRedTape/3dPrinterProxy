@@ -75,7 +75,7 @@ void ShuiPrinterConnection::HandleConnect(const boost::system::error_code& error
 		LogShuiConnection(Error, "OnConnect: %", error.what());
 		Connect();
 	} else {
-		if(OnConnect) OnConnect();
+		std::call(OnConnect);
 		Read();
 	}
 }
@@ -116,8 +116,8 @@ void ShuiPrinterConnection::HandleRead(const boost::system::error_code& error, s
 
 		m_Lines++;
 	}
-
-	if(OnTick) OnTick();
+	
+	std::call(OnTick);
 
 	Read();
 	
@@ -132,7 +132,7 @@ void ShuiPrinterConnection::HandlePrinterLine(const std::string &line) {
 		Println("[%]: %", m_Lines, line);
 #endif
 
-	if(OnPrinterLine) OnPrinterLine(line, m_Lines);
+	std::call(OnPrinterLine, line, m_Lines);
 
 	m_GCodeEngine.OnLine(line, m_Lines);
 }
@@ -162,7 +162,7 @@ void ShuiPrinterConnection::HandleTimeout(const boost::system::error_code& error
 		m_Lines = 0;
 		m_Timeouts++;
 
-		if(OnTimeout) OnTimeout(m_Timeouts);
+		std::call(OnTimeout, m_Timeouts);
 
 		Connect();
 	}
