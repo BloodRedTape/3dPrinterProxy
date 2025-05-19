@@ -14,7 +14,7 @@ void LogShuiIf(const boost::system::error_code &ec) {
 ShuiPrinter::ShuiPrinter(std::string ip, std::uint16_t port):
 	m_Ip(std::move(ip)),
 	m_Port(port),
-    m_Storage(m_Ip)
+    m_Storage(m_Ip, "./shui/storage.json")
 {
 	m_Connection = std::make_unique<ShuiPrinterConnection>(m_Ip, m_Port);
 	m_Connection->OnConnect = std::bind(&ShuiPrinter::OnConnectionConnect, this);
@@ -233,8 +233,8 @@ void ShuiPrinter::UpdateStateFromSystemLine(const std::string& line) {
             size_t slashPos = token.find('/');
             if (slashPos != std::string::npos) {
                 try {
-                    float newValue = std::stof(token.substr(0, slashPos));
-                    float newTargetValue = std::stof(token.substr(slashPos + 1));
+                    float newValue = std::round(std::stof(token.substr(0, slashPos)));
+                    float newTargetValue = std::round(std::stof(token.substr(slashPos + 1)));
 
                     if(state.ExtruderTemperature != newValue)
                         changed = true; 
@@ -253,8 +253,8 @@ void ShuiPrinter::UpdateStateFromSystemLine(const std::string& line) {
             size_t slashPos = token.find('/');
             if (slashPos != std::string::npos) {
                 try {
-                    float newValue = std::stof(token.substr(0, slashPos));
-                    float newTargetValue = std::stof(token.substr(slashPos + 1));
+                    float newValue = std::round(std::stof(token.substr(0, slashPos)));
+                    float newTargetValue = std::round(std::stof(token.substr(slashPos + 1)));
 
                     if(state.BedTemperature != newValue)
                         changed = true; 

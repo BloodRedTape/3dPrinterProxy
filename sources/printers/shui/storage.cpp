@@ -1,10 +1,13 @@
 #include "storage.hpp"
 #include <bsl/defer.hpp>
+#include <bsl/file.hpp>
 #include <unordered_set>
 #include <filesystem>
 #include "upload.hpp"
 #include <bsl/log.hpp>
 #include "pch/std.hpp"
+
+DEFINE_LOG_CATEGORY(ShuiStorage)
 
 static GCodeFileRuntimeData ParseFromFile(const std::string& content) {
     std::stringstream stream(content);
@@ -58,9 +61,14 @@ static GCodeFileRuntimeData ParseFromFile(const std::string& content) {
     return result;
 }
 
-ShuiPrinterStorage::ShuiPrinterStorage(const std::string& ip):
-    m_Ip(ip)
-{}
+ShuiPrinterStorage::ShuiPrinterStorage(const std::string& ip, const std::string &filepath):
+    m_Ip(ip),
+    m_Filepath(filepath)
+{
+    if (!LoadFromFile()) {
+        LogShuiStorage(Warning, "Can't load storage from file");
+    }
+}
 
 void ShuiPrinterStorage::UploadGCodeFileAsync(const std::string& filename, const std::string& content, std::function<void(bool)> callback) {
     auto OnUploaded = [=](bool success, std::string result) {
@@ -91,7 +99,13 @@ void ShuiPrinterStorage::UploadGCodeFileAsync(const std::string& filename, const
         auto runtime_data = ParseFromFile(content);
 
         m_ContentHashToRuntimeData.emplace(hash, std::move(runtime_data));
+
+        if(m_FilenameToFile.count(filename))
+            m_ContentHashToRuntimeData.erase(m_FilenameToFile.at(filename).ContentHash);
+            
         m_FilenameToFile.emplace(filename, GCodeFile{hash});
+
+        SaveToFile();
     };
 
     std::make_shared<ShuiUpload>(m_Ip, filename, content, true, OnUploaded)->RunAsync();
@@ -203,5 +217,23 @@ std::string ShuiPrinterStorage::ConvertTo83Revisioned(const std::string& long_fi
         base.pop_back();
 
     return base + revision_prefix + extension;
+}
+
+void ShuiPrinterStorage::SaveToFile()const{
+    WriteEntireFile(m_Filepath, nlohmann::json(*this).dump());
+}
+
+bool ShuiPrinterStorage::LoadFromFile(){
+    auto content = ReadEntireFile(m_Filepath);
+    
+    try{
+        auto json = nlohmann::json::parse(content, nullptr, false, false);
+        
+        from_json(json, *this);
+
+        return true;
+    }catch (...) {
+        return false;
+    }
 }
 

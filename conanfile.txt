@@ -2,7 +2,6 @@
 boost/1.83.0
 openssl/3.2.1
 beauty/1.0.3
-nlohmann_json/3.9.0
 
 [generators]
 CMakeDeps

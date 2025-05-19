@@ -1,3 +1,6 @@
 [submodule "libs/bsl"]
 	path = libs/bsl
 	url = https://github.com/bloodredtape/bsl
+[submodule "libs/json"]
+	path = libs/json
+	url = https://github.com/nlohmann/json.git

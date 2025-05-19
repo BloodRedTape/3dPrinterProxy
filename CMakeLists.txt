@@ -6,8 +6,8 @@ project(3dPrinterProxy)
 
 find_package(beauty REQUIRED)
 find_package(Boost REQUIRED)
-find_package(nlohmann_json REQUIRED)
 add_subdirectory(libs/bsl)
+add_subdirectory(libs/json)
 
 add_executable(3dPrinterProxy
 	"./sources/main.cpp"
@@ -29,6 +29,7 @@ target_precompile_headers(3dPrinterProxy PRIVATE
 	"./sources/pch/asio.hpp"
 	"./sources/pch/beauty.hpp"
 	"./sources/pch/std.hpp"
+	"./sources/pch/json.hpp"
 )
 
 target_include_directories(3dPrinterProxy PRIVATE "./sources")
