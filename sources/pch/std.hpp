@@ -26,4 +26,16 @@ namespace std {
 		static Type empty;
 		return empty;
 	}
+
+	template<typename CallableType, typename ...ArgsType>
+	auto errno_call(CallableType function, ArgsType&&...args) -> std::optional<decltype(std::declval<CallableType>()(std::declval<ArgsType>()...))> {
+		errno = 0;
+
+		auto result = (*function)(std::forward<ArgsType>(args)...);
+
+		if(errno)
+			return std::nullopt;
+
+		return std::make_optional(result);
+	}
 }

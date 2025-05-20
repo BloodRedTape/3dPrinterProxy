@@ -7,55 +7,76 @@
 #include <bsl/log.hpp>
 #include "pch/std.hpp"
 
+#define WITH_PROFILE 1
+#include "core/perf.hpp"
+#define WITH_UPDATE_METADATA_BEFORE_UPLOAD 1
+
 DEFINE_LOG_CATEGORY(ShuiStorage)
 
-#define ALWAYS_UPDATE_METADATA 1
+class StringStream {
+    const std::string &m_Input;
+    std::size_t m_ReadPosition = 0;
+public:
+    StringStream(const std::string &input):
+        m_Input(input)
+    {}
+
+
+    std::optional<std::string_view> GetLine(char delimiter = '\n'){
+        if(m_ReadPosition >= m_Input.size())
+            return std::nullopt;
+
+        std::size_t end = m_ReadPosition;
+
+        while(end < m_Input.size() && m_Input[end] != delimiter)
+            end++;
+
+        std::string_view result(&m_Input[m_ReadPosition], &m_Input[end]);
+
+        m_ReadPosition = end + 1;
+
+        return result;
+    }
+
+    std::size_t ReadPosition()const{
+        return m_ReadPosition;
+    }
+};
 
 static GCodeFileRuntimeData ParseFromFile(const std::string& content) {
-    std::stringstream stream(content);
+    StringStream stream(content);
 
     GCodeFileRuntimeData result;
     
     GCodeRuntimeState state;
 
-    std::string line;
-    while (std::getline(stream, line)) {
+    while (auto line_opt = stream.GetLine()) {
+        std::string_view line = line_opt.value();
+
         static constexpr const char *SetPrintProgressPrefix = "M73 P";
         static constexpr const char *SetPrintLayerPrefix = "M2033.1 L";
         static constexpr const char *SetPrintHeightPrefix = ";Z:";
 
         GCodeRuntimeState new_state = state;
 
-        std::string::size_type pos = line.find(SetPrintProgressPrefix);
-        
-        if (pos != std::string::npos){
-        
-            try{
-                new_state.Percent = std::stoi(line.substr(pos + std::strlen(SetPrintProgressPrefix)));
-            }catch(...){ }
+        if (line.starts_with(SetPrintProgressPrefix)){
+            auto text = std::string(line.substr(std::strlen(SetPrintProgressPrefix)));
+            new_state.Percent = std::stoi(text);
         }
-
-        pos = line.find(SetPrintLayerPrefix);
         
-        if (pos != std::string::npos){
-        
-            try{
-                new_state.Layer = std::stoi(line.substr(pos + std::strlen(SetPrintLayerPrefix)));
-            }catch(...){ }
+        if (line.starts_with(SetPrintLayerPrefix)){
+            auto text = std::string(line.substr(std::strlen(SetPrintLayerPrefix)));
+            new_state.Layer = std::stoi(text);
         }
-
-        pos = line.find(SetPrintHeightPrefix);
         
-        if (pos != std::string::npos){
-        
-            try{
-                new_state.Height = std::round(std::stof(line.substr(pos + std::strlen(SetPrintHeightPrefix))) * 10.f) / 10.f;
-            }catch(...){ }
+        if (line.starts_with(SetPrintHeightPrefix)){
+            auto text = std::string(line.substr(std::strlen(SetPrintHeightPrefix)));
+            new_state.Height = std::round(std::stof(text) * 10.f) / 10.f;
         }
 
         if (new_state != state) {
             state = new_state;
-            result.Index.push_back(stream.tellg());
+            result.Index.push_back(stream.ReadPosition());
             result.States.push_back(state);
         }
     }
@@ -74,14 +95,20 @@ ShuiPrinterStorage::ShuiPrinterStorage(const std::string& ip, const std::filesys
 
 void ShuiPrinterStorage::UploadGCodeFileAsync(const std::string& filename, const std::string& content, std::function<void(bool)> callback) {
 
+#if WITH_UPDATE_METADATA_BEFORE_UPLOAD
+    OnFileUploaded(filename, content);
+#endif
+
     auto OnUploaded = [=](bool success, std::string result) {
         defer{
             Println("Result %, Filename: %, 8.3: %", result, filename, std::safe(Get83Filename(filename)));
             std::call(callback, success);
         };
         
-        if(success || ALWAYS_UPDATE_METADATA)
+#if !WITH_UPDATE_METADATA_BEFORE_UPLOAD
+        if(success)
             OnFileUploaded(filename, content);
+#endif
     };
 
     std::make_shared<ShuiUpload>(m_Ip, filename, content, true, OnUploaded)->RunAsync();
@@ -196,6 +223,8 @@ std::string ShuiPrinterStorage::ConvertTo83Revisioned(const std::string& long_fi
 }
 
 bool ShuiPrinterStorage::OnFileUploaded(const std::string& filename, const std::string& content){
+    PROFILE_SCOPE(ShuiPrinterStorage, OnFileUploaded);
+
     //Overwrite old file
     if(ExistsLong(filename)){
         if(m_FilenameToFile.count(filename)) {
@@ -212,14 +241,25 @@ bool ShuiPrinterStorage::OnFileUploaded(const std::string& filename, const std::
     }
     
     //XXX replace with bette
-    std::size_t hash = std::hash<std::string>()(content);
-    auto runtime_data = ParseFromFile(content);
+    std::size_t hash = 0;
+    {
+        PROFILE_SCOPE(ShuiPrinterStorage, OnFileUploaded_Hash);
+        hash = std::hash<std::string>()(content);
+    } 
+    GCodeFileRuntimeData runtime_data;
+    {
+        PROFILE_SCOPE(ShuiPrinterStorage, OnFileUploaded_ParseRuntimeData);
+        runtime_data = ParseFromFile(content);
+    }
 
     m_ContentHashToRuntimeData.emplace(hash, std::move(runtime_data));
     
     m_FilenameToFile.emplace(filename, GCodeFile{hash});
 
-    SaveToFile();
+    {
+        PROFILE_SCOPE(ShuiPrinterStorage, OnFileUploaded_SaveToFile);
+        SaveToFile();
+    }
 
     return true;
 }
