@@ -4,6 +4,7 @@
 #include <chrono>
 #include <queue>
 #include <bsl/log.hpp>
+#include <bsl/defer.hpp>
 
 DEFINE_LOG_CATEGORY(Shui)
 
@@ -137,7 +138,7 @@ void ShuiPrinter::OnConnectionTimeout(std::int64_t timeout) {
     LogShui(Display, "\tTimeout");
 #endif
 
-	if(timeout >= 3 && m_State.has_value()){
+	if(timeout >= 4 && m_State.has_value()){
 		m_State = std::nullopt;
 		
 		std::call(OnStateChanged);
@@ -187,20 +188,6 @@ void ShuiPrinter::SubmitReportSequenceAsync() {
 #endif
         UpdateStateFromSelectedFile(result.value());
     });
-
-    m_Connection->SubmitGCodeAsync("M123", [&](std::optional<std::string> result) {
-        if(!result.has_value()){
-#if SHUI_VERBOSE_LOGGING
-            Println("\tM123 Failed");
-#endif
-            return;
-        }
-
-#if SHUI_VERBOSE_LOGGING
-        Println("\tM123: %", result.value());
-#endif
-        UpdateStateFromSelectedFile(result.value());
-    });
 }
 
 void ShuiPrinter::UpdateStateFromSystemLine(const std::string& line) {
@@ -219,8 +206,11 @@ void ShuiPrinter::UpdateStateFromSystemLine(const std::string& line) {
 
         auto& print = state.Print.value();
 
-        if (print.Status != PrintStatus::Busy) {
+        if (TargetTemperaturesReached() && !print.CurrentBytesPrinted && print.Status != PrintStatus::Busy) {
             print.Status = PrintStatus::Busy;
+            changed = true;
+        }else if (AllHeatersOn() && !TargetTemperaturesReached() && print.Status != PrintStatus::Heating) {
+            print.Status = PrintStatus::Heating;
             changed = true;
         }
     }
@@ -306,52 +296,54 @@ void ShuiPrinter::UpdateStateFromSdCardStatus(const std::string& line) {
     std::string target_string = progress.substr(separator + 1);
     
     bool changed = false;
+    
+    defer {
+        if(changed) std::call(OnStateChanged);
+    };
 
     if (!State().Print.has_value()){
         State().Print = PrintState();
         changed = true;
     }
 
-    try {
-        auto& print = State().Print.value();
-
-        std::int64_t current = std::stoi(current_string);
-        std::int64_t target = std::stoi(target_string);
-        
-        if(print.CurrentBytesPrinted != current)
-            changed = true;
-        if(print.TargetBytesPrinted != target)
-            changed = true;
-
-        if(print.Status != PrintStatus::Printing){
-            print.Status = PrintStatus::Printing;
-            changed = true;
-        }
-
-        print.CurrentBytesPrinted = current;
-        print.TargetBytesPrinted = target;
-
-        const GCodeFileRuntimeData *runtime = m_Storage.GetRuntimeData(print.Filename);
-
-        if (runtime) {
-            GCodeRuntimeState state = runtime->GetStateNear(current);
-
-            if(print.Progress != state.Percent)
-                changed = true;
-            if(print.Layer != state.Layer)
-                changed = true;
-            if(print.Height != state.Height)
-                changed = true;
-
-            print.Progress = state.Percent;
-            print.Layer = state.Layer;
-            print.Height = state.Height;
-        }
-
-    }catch(const std::exception& e){ }
+    auto& print = State().Print.value();
     
-    if(changed)
-        std::call(OnStateChanged);
+    errno = 0;
+    std::int64_t current = std::atoi(current_string.c_str());
+    std::int64_t target = std::atoi(target_string.c_str());
+    if(errno)
+        return;
+    
+    if(print.CurrentBytesPrinted != current)
+        changed = true;
+    if(print.TargetBytesPrinted != target)
+        changed = true;
+
+    if (TargetTemperaturesReached() && print.Status != PrintStatus::Printing){
+        print.Status = PrintStatus::Printing;
+        changed = true;
+    }
+
+    print.CurrentBytesPrinted = current;
+    print.TargetBytesPrinted = target;
+
+    const GCodeFileRuntimeData *runtime = m_Storage.GetRuntimeData(print.Filename);
+
+    if (runtime) {
+        GCodeRuntimeState state = runtime->GetStateNear(current);
+
+        if(print.Progress != state.Percent)
+            changed = true;
+        if(print.Layer != state.Layer)
+            changed = true;
+        if(print.Height != state.Height)
+            changed = true;
+
+        print.Progress = state.Percent;
+        print.Layer = state.Layer;
+        print.Height = state.Height;
+    }
+    
 }
 
 void ShuiPrinter::UpdateStateFromSelectedFile(const std::string& line) {
@@ -388,7 +380,6 @@ void ShuiPrinter::UpdateStateFromSelectedFile(const std::string& line) {
     }
 
     if (State().Print.has_value() && printing && State().Print.value().Filename != filename && filename.size()) {
-        State().Print = PrintState();
         State().Print.value().Filename = filename;
 
         std::call(OnStateChanged);
@@ -405,6 +396,24 @@ void ShuiPrinter::UpdateStateFromSelectedFile(const std::string& line) {
 
 std::optional<PrinterState> ShuiPrinter::GetPrinterState() const {
 	return m_State;
+}
+
+bool ShuiPrinter::TargetTemperaturesReached() const {
+    if(!m_State.has_value())
+        return false;
+
+    float bed_diviation = 6;
+    float extruder_diviation = 10;
+
+    return m_State.value().BedTemperature + bed_diviation > m_State.value().TargetBedTemperature
+        && m_State.value().ExtruderTemperature + extruder_diviation > m_State.value().TargetExtruderTemperature;
+}
+
+bool ShuiPrinter::AllHeatersOn() const{
+    if(!m_State.has_value())
+        return false;
+
+    return m_State.value().TargetBedTemperature && m_State.value().TargetExtruderTemperature;
 }
 
 PrinterState& ShuiPrinter::State() {

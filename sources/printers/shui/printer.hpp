@@ -67,6 +67,10 @@ public:
 
 	std::optional<PrinterState> GetPrinterState()const;
 
+	bool TargetTemperaturesReached()const;
+
+	bool AllHeatersOn()const;
+
 private:
 	PrinterState &State();
 };

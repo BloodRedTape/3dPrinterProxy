@@ -3,9 +3,20 @@
 #include "pch/std.hpp"
 
 enum class PrintStatus {
+	Heating,
 	Busy,
 	Printing,
 };
+
+inline std::string to_string(PrintStatus status) {
+	if(status == PrintStatus::Heating)
+		return "Heating";
+	if(status == PrintStatus::Busy)
+		return "Busy";
+	if(status == PrintStatus::Printing)
+		return "Printing";
+	return "__None__";
+}
 
 struct PrintState {
 	std::string Filename;
