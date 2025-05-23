@@ -32,4 +32,6 @@ target_precompile_headers(3dPrinterProxy PRIVATE
 	"./sources/pch/json.hpp"
 )
 
+target_compile_features(3dPrinterProxy PRIVATE cxx_std_17)
+
 target_include_directories(3dPrinterProxy PRIVATE "./sources")

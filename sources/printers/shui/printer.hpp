@@ -31,6 +31,8 @@ public:
 
 	virtual void SetTargetExtruderTemperatureAsync(std::int64_t tempearture);
 
+	virtual void SetFeedRatePercentAsync(float feed_rate);
+
 	virtual void SetLCDMessageAsync(std::string message);
 
 	virtual void SetDialogMessageAsync(std::string message, std::optional<int> display_time_seconds = std::nullopt);
@@ -64,6 +66,8 @@ public:
 	void UpdateStateFromSdCardStatus(const std::string &line);
 
 	void UpdateStateFromSelectedFile(const std::string &line);
+
+	void UpdateStateFromFeedRate(const std::string &line);
 
 	std::optional<PrinterState> GetPrinterState()const;
 

@@ -34,11 +34,11 @@ void PrinterProxy::RunAsync() {
 
 		auto state = state_opt.value();
 		
-		Print("[Bed %/%][Extruder %/%]", state.BedTemperature, state.TargetBedTemperature, state.ExtruderTemperature, state.TargetExtruderTemperature);
+		Print("[Bed %/%][Extruder %/%][FeedRate %]", state.BedTemperature, state.TargetBedTemperature, state.ExtruderTemperature, state.TargetExtruderTemperature, state.FeedRate);
 		
 		if (state.Print.has_value()) {
 			auto print = state.Print.value();
-			Print("[filename %, progress %, layer %, height %, status %, bytes %/%]", print.Filename, print.Progress, print.Layer, print.Height, to_string(print.Status), print.CurrentBytesPrinted, print.TargetBytesPrinted);
+			Print("[filename %, progress %, layer %, height %, status %, bytes %/%]", print.Filename, print.Progress, print.Layer, print.Height, print.Status.Name(), print.CurrentBytesPrinted, print.TargetBytesPrinted);
 		}
 		Print("\n");
 	};

@@ -1,22 +1,13 @@
 #pragma once
 
 #include "pch/std.hpp"
+#include <bsl/enum.hpp>
 
-enum class PrintStatus {
+BSL_ENUM(PrintStatus,
 	Heating,
 	Busy,
-	Printing,
-};
-
-inline std::string to_string(PrintStatus status) {
-	if(status == PrintStatus::Heating)
-		return "Heating";
-	if(status == PrintStatus::Busy)
-		return "Busy";
-	if(status == PrintStatus::Printing)
-		return "Printing";
-	return "__None__";
-}
+	Printing
+);
 
 struct PrintState {
 	std::string Filename;
@@ -35,6 +26,8 @@ struct PrinterState {
 
 	float ExtruderTemperature = 0.f;
 	float TargetExtruderTemperature = 0.f;
+
+	float FeedRate = 0.f;
 	
 	//float FanSpeed = 0.f;
 

@@ -72,6 +72,15 @@ void ShuiPrinter::SetTargetExtruderTemperatureAsync(std::int64_t temperature){
     m_Connection->SubmitGCodeAsync(Format("M104 T0 S%", temperature), GCodeExecutionEngine::DefaultGCodeCallback, 1);
 }
 
+void ShuiPrinter::SetFeedRatePercentAsync(float feed_rate){
+    if(feed_rate < 0){
+        LogShui(Error, "SetFeedRatePercentAsync: feedrate % is less than zero", feed_rate);
+        return;
+    }
+
+    m_Connection->SubmitGCodeAsync(Format("M220 S%", (int)feed_rate), GCodeExecutionEngine::DefaultGCodeCallback, 1);
+}
+
 static std::string NormalizeMessage(std::string message) {
     auto pos = message.find(ShuiPrinterConnection::PrinterStreamLineSeparator);
 
@@ -187,6 +196,20 @@ void ShuiPrinter::SubmitReportSequenceAsync() {
         Println("\tM27 C: %", result.value());
 #endif
         UpdateStateFromSelectedFile(result.value());
+    });
+
+    m_Connection->SubmitGCodeAsync("M220", [&](std::optional<std::string> result) {
+        if(!result.has_value()){
+#if SHUI_VERBOSE_LOGGING
+            Println("\tM220 Failed");
+#endif
+            return;
+        }
+
+#if SHUI_VERBOSE_LOGGING
+        Println("\tM220 C: %", result.value());
+#endif
+        UpdateStateFromFeedRate(result.value());
     });
 }
 
@@ -391,6 +414,33 @@ void ShuiPrinter::UpdateStateFromSelectedFile(const std::string& line) {
 
         std::call(OnStateChanged);
         return;
+    }
+}
+
+void ShuiPrinter::UpdateStateFromFeedRate(const std::string& line){
+    //reported as FR:150%
+    static const std::string FeedratePrefix = "FR:";
+
+    auto pos = line.find(FeedratePrefix);
+
+    if(pos == std::string::npos)
+        return;
+    
+    std::string feedrate_string = line.substr(pos + FeedratePrefix.size());
+
+    pos = feedrate_string.find('%');
+
+    if(pos == std::string::npos)
+        return;
+
+    errno = 0;
+    std::int64_t feedrate = std::atoi(feedrate_string.c_str());
+    if(errno)
+        return;
+
+    if (State().FeedRate != feedrate){
+        State().FeedRate = feedrate;
+        std::call(OnStateChanged);
     }
 }
 
