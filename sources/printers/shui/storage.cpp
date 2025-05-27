@@ -93,7 +93,7 @@ ShuiPrinterStorage::ShuiPrinterStorage(const std::string& ip, const std::filesys
     }
 }
 
-void ShuiPrinterStorage::UploadGCodeFileAsync(const std::string& filename, const std::string& content, std::function<void(bool)> callback) {
+void ShuiPrinterStorage::UploadGCodeFileAsync(const std::string& filename, const std::string& content, bool print, std::function<void(bool)> callback) {
 
 #if WITH_UPDATE_METADATA_BEFORE_UPLOAD
     OnFileUploaded(filename, content);
@@ -111,7 +111,7 @@ void ShuiPrinterStorage::UploadGCodeFileAsync(const std::string& filename, const
 #endif
     };
 
-    std::make_shared<ShuiUpload>(m_Ip, filename, content, true, OnUploaded)->RunAsync();
+    std::make_shared<ShuiUpload>(m_Ip, filename, content, print, OnUploaded)->RunAsync();
 }
 
 const GCodeFileRuntimeData* ShuiPrinterStorage::GetRuntimeData(const std::string& long_filename) const{

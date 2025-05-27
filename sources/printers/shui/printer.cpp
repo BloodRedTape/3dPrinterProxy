@@ -60,25 +60,37 @@ void ShuiPrinter::RunAsync(){
 #endif
 }
 
-void ShuiPrinter::IdentifyAsync() {
-    m_Connection->SubmitGCodeAsync("M300", GCodeExecutionEngine::DefaultGCodeCallback, 1);
+static auto MakeGCodeEngineCallback(const ShuiPrinter *printer, GCodeCallback &&callback) {
+    return [callback = std::move(callback), printer](std::optional<std::string> result) {
+        if(result.has_value())
+            std::call(callback, GCodeResult::Ok);
+
+        if(!printer->GetPrinterState().has_value())
+            std::call(callback, GCodeResult::NoConnection);
+
+        std::call(callback, GCodeResult::Busy);
+    };
 }
 
-void ShuiPrinter::SetTargetBedTemperatureAsync(std::int64_t temperature){
-    m_Connection->SubmitGCodeAsync(Format("M140 S%", temperature), GCodeExecutionEngine::DefaultGCodeCallback, 1);
+void ShuiPrinter::IdentifyAsync(GCodeCallback callback) {
+    m_Connection->SubmitGCodeAsync("M300", MakeGCodeEngineCallback(this, std::move(callback)), 1);
 }
 
-void ShuiPrinter::SetTargetExtruderTemperatureAsync(std::int64_t temperature){
-    m_Connection->SubmitGCodeAsync(Format("M104 T0 S%", temperature), GCodeExecutionEngine::DefaultGCodeCallback, 1);
+void ShuiPrinter::SetTargetBedTemperatureAsync(std::int64_t temperature, GCodeCallback callback){
+    m_Connection->SubmitGCodeAsync(Format("M140 S%", temperature), MakeGCodeEngineCallback(this, std::move(callback)), 1);
 }
 
-void ShuiPrinter::SetFeedRatePercentAsync(float feed_rate){
+void ShuiPrinter::SetTargetExtruderTemperatureAsync(std::int64_t temperature, GCodeCallback callback){
+    m_Connection->SubmitGCodeAsync(Format("M104 T0 S%", temperature), MakeGCodeEngineCallback(this, std::move(callback)), 1);
+}
+
+void ShuiPrinter::SetFeedRatePercentAsync(float feed_rate, GCodeCallback callback){
     if(feed_rate < 0){
         LogShui(Error, "SetFeedRatePercentAsync: feedrate % is less than zero", feed_rate);
         return;
     }
 
-    m_Connection->SubmitGCodeAsync(Format("M220 S%", (int)feed_rate), GCodeExecutionEngine::DefaultGCodeCallback, 1);
+    m_Connection->SubmitGCodeAsync(Format("M220 S%", (int)feed_rate), MakeGCodeEngineCallback(this, std::move(callback)), 1);
 }
 
 static std::string NormalizeMessage(std::string message) {
@@ -92,46 +104,51 @@ static std::string NormalizeMessage(std::string message) {
     return message;
 }
 
-void ShuiPrinter::SetLCDMessageAsync(std::string message) {
-    m_Connection->SubmitGCodeAsync(Format("M117 %", NormalizeMessage(message)), GCodeExecutionEngine::DefaultGCodeCallback, 1);
+void ShuiPrinter::SetLCDMessageAsync(std::string message, GCodeCallback callback) {
+    m_Connection->SubmitGCodeAsync(Format("M117 %", NormalizeMessage(message)), MakeGCodeEngineCallback(this, std::move(callback)), 1);
 }
 
-void ShuiPrinter::SetDialogMessageAsync(std::string message, std::optional<int> display_time){
-    m_Connection->SubmitGCodeAsync(Format("M2011% %", display_time.has_value() ? Format(" S%", display_time.value()) : "", NormalizeMessage(message)), GCodeExecutionEngine::DefaultGCodeCallback, 1);
+void ShuiPrinter::SetDialogMessageAsync(std::string message, std::optional<int> display_time, GCodeCallback callback){
+    m_Connection->SubmitGCodeAsync(Format("M2011% %", display_time.has_value() ? Format(" S%", display_time.value()) : "", NormalizeMessage(message)), MakeGCodeEngineCallback(this, std::move(callback)), 1);
 }
 
-void ShuiPrinter::SetFanSpeedAsync(std::uint8_t speed){
-    m_Connection->SubmitGCodeAsync(Format("M106 S%", (int)speed), GCodeExecutionEngine::DefaultGCodeCallback, 1);
+void ShuiPrinter::SetFanSpeedAsync(std::uint8_t speed, GCodeCallback callback){
+    m_Connection->SubmitGCodeAsync(Format("M106 S%", (int)speed), MakeGCodeEngineCallback(this, std::move(callback)), 1);
 }
-void ShuiPrinter::PauseUntillUserInputAsync(std::string message){
-    m_Connection->SubmitGCodeAsync(Format("M0 %", message), GCodeExecutionEngine::DefaultGCodeCallback, 1);
-}
-
-void ShuiPrinter::PausePrintAsync(){
-    m_Connection->SubmitGCodeAsync("M25", GCodeExecutionEngine::DefaultGCodeCallback, 1);
+void ShuiPrinter::PauseUntillUserInputAsync(std::string message, GCodeCallback callback){
+    m_Connection->SubmitGCodeAsync(Format("M0 %", message), MakeGCodeEngineCallback(this, std::move(callback)), 1);
 }
 
-void ShuiPrinter::ResumePrintAsync(){
-    m_Connection->SubmitGCodeAsync("M24", GCodeExecutionEngine::DefaultGCodeCallback, 1);
+void ShuiPrinter::PausePrintAsync(GCodeCallback callback){
+    m_Connection->SubmitGCodeAsync("M25", MakeGCodeEngineCallback(this, std::move(callback)), 1);
 }
 
-void ShuiPrinter::ReleaseMotorsAsync() {
-    m_Connection->SubmitGCodeAsync("M84", GCodeExecutionEngine::DefaultGCodeCallback, 1);
+void ShuiPrinter::ResumePrintAsync(GCodeCallback callback){
+    m_Connection->SubmitGCodeAsync("M24", MakeGCodeEngineCallback(this, std::move(callback)), 1);
 }
 
-void ShuiPrinter::CancelPrintAsync() {
+void ShuiPrinter::ReleaseMotorsAsync(GCodeCallback callback) {
+    m_Connection->SubmitGCodeAsync("M84", MakeGCodeEngineCallback(this, std::move(callback)), 1);
+}
+
+void ShuiPrinter::CancelPrintAsync(GCodeCallback callback) {
+    callback(GCodeResult::Unsupported);
+
     //XXX find a way to reliably send a gcode sequence
-    PausePrintAsync();
+    PausePrintAsync(Printer::DefaultGCodeCallback);
     //XXX stop print
     m_Connection->SubmitGCodeAsync("G91", GCodeExecutionEngine::DefaultGCodeCallback, 1);
     m_Connection->SubmitGCodeAsync("G1 Z20", GCodeExecutionEngine::DefaultGCodeCallback, 1);
     m_Connection->SubmitGCodeAsync("M84", GCodeExecutionEngine::DefaultGCodeCallback, 1);
-    ReleaseMotorsAsync();
-    SetFanSpeedAsync(0);
+    ReleaseMotorsAsync(Printer::DefaultGCodeCallback);
+    SetFanSpeedAsync(0, Printer::DefaultGCodeCallback);
 }
 
-ShuiPrinterStorage& ShuiPrinter::Storage(){
+PrinterStorage& ShuiPrinter::Storage(){
     return m_Storage;
+}
+bool ShuiPrinter::IsConnected()const {
+    return m_State.has_value();
 }
 
 void ShuiPrinter::OnConnectionConnect() {

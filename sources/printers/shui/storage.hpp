@@ -1,6 +1,7 @@
 #pragma once
 
 #include "printers/file.hpp"
+#include "printers/storage.hpp"
 
 struct GCodeFile {
 	std::size_t ContentHash = 0;
@@ -8,7 +9,7 @@ struct GCodeFile {
 	NLOHMANN_DEFINE_TYPE_INTRUSIVE_WITH_DEFAULT(GCodeFile, ContentHash)
 };
 
-class ShuiPrinterStorage {
+class ShuiPrinterStorage: public PrinterStorage{
 	std::string m_Ip;
 	std::filesystem::path m_DataPath;
 
@@ -19,7 +20,7 @@ class ShuiPrinterStorage {
 public:
 	ShuiPrinterStorage(const std::string& ip, const std::filesystem::path &data_path);
 
-	void UploadGCodeFileAsync(const std::string &filename, const std::string& content, std::function<void(bool)> callback);
+	void UploadGCodeFileAsync(const std::string &filename, const std::string& content, bool print, std::function<void(bool)> callback)override;
 
 	//GCodeFile *GetStoredFile(const std::string &filename)const;
 

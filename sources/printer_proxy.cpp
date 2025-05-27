@@ -23,6 +23,9 @@ void PrinterProxy::Listen(std::uint16_t port) {
 }
 
 void PrinterProxy::RunAsync() {
+    m_Interface.Listen(2229);
+    m_Interface.RunAsync();
+
 	m_Printer.RunAsync();
 
 	m_Printer.OnStateChanged = [this]() {
@@ -66,13 +69,13 @@ void PrinterProxy::PostPrinterValue(const beauty::request& req, beauty::response
 	if (type == "target_bed_temperature") {
 		std::int64_t temp = std::stoi(req.body());
 
-		m_Printer.SetTargetBedTemperatureAsync(temp);
+		m_Printer.SetTargetBedTemperatureAsync(temp, Printer::DefaultGCodeCallback);
 	}
 
 	if (type == "target_extruder_temperature") {
 		std::int64_t temp = std::stoi(req.body());
 
-		m_Printer.SetTargetExtruderTemperatureAsync(temp);
+		m_Printer.SetTargetExtruderTemperatureAsync(temp, Printer::DefaultGCodeCallback);
 	}
 }
 
@@ -86,5 +89,5 @@ void PrinterProxy::PostStorageUpload(const beauty::request& req, beauty::respons
 	if(!filename.size())
 		throw beauty::http_error::client::bad_request();
 
-	m_Printer.Storage().UploadGCodeFileAsync(filename, content, [](auto){});
+	m_Printer.Storage().UploadGCodeFileAsync(filename, content, true, [](auto){});
 }

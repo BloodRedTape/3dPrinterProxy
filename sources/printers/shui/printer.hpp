@@ -4,10 +4,11 @@
 #include "printers/state.hpp"
 #include "printers/shui/connection.hpp"
 #include "printers/shui/storage.hpp"
+#include "printers/printer.hpp"
 
 namespace boost::asio { class io_context; }
 
-class ShuiPrinter {
+class ShuiPrinter: public Printer {
 	std::filesystem::path m_DataPath;
 	std::string m_Ip;
 	std::uint16_t m_Port = 0;
@@ -18,38 +19,38 @@ class ShuiPrinter {
 	
 	ShuiPrinterStorage m_Storage;
 public:
-	std::function<void()> OnStateChanged;
-public:
 	
 	ShuiPrinter(std::string ip, std::uint16_t port, const std::filesystem::path &data_path);
 
-	void RunAsync();
+	void RunAsync()override;
 
-	virtual void IdentifyAsync();
+	void IdentifyAsync(GCodeCallback callback)override;
 
-	virtual void SetTargetBedTemperatureAsync(std::int64_t tempearture);
+	void SetTargetBedTemperatureAsync(std::int64_t tempearture, GCodeCallback callback)override;
 
-	virtual void SetTargetExtruderTemperatureAsync(std::int64_t tempearture);
+	void SetTargetExtruderTemperatureAsync(std::int64_t tempearture, GCodeCallback callback)override;
 
-	virtual void SetFeedRatePercentAsync(float feed_rate);
+	void SetFeedRatePercentAsync(float feed_rate, GCodeCallback callback)override;
 
-	virtual void SetLCDMessageAsync(std::string message);
+	void SetLCDMessageAsync(std::string message, GCodeCallback callback)override;
 
-	virtual void SetDialogMessageAsync(std::string message, std::optional<int> display_time_seconds = std::nullopt);
+	void SetDialogMessageAsync(std::string message, std::optional<int> display_time_seconds, GCodeCallback callback)override;
 
-	virtual void SetFanSpeedAsync(std::uint8_t speed);
+	void SetFanSpeedAsync(std::uint8_t speed, GCodeCallback callback)override;
 
-	virtual void PauseUntillUserInputAsync(std::string message = "");
+	void PauseUntillUserInputAsync(std::string message, GCodeCallback callback)override;
 
-	virtual void PausePrintAsync();
+	void PausePrintAsync(GCodeCallback callback)override;
 
-	virtual void ResumePrintAsync();
+	void ResumePrintAsync(GCodeCallback callback)override;
 
-	virtual void ReleaseMotorsAsync();
+	void ReleaseMotorsAsync(GCodeCallback callback)override;
 
-	virtual void CancelPrintAsync();
+	void CancelPrintAsync(GCodeCallback callback)override;
 	
-	virtual ShuiPrinterStorage &Storage();
+	PrinterStorage &Storage()override;
+
+	bool IsConnected()const override;
 
 	void OnConnectionConnect();
 

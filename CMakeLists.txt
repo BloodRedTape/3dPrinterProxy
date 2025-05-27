@@ -16,7 +16,7 @@ add_executable(3dPrinterProxy
 	"./sources/printers/shui/gcode.cpp" 
 	"./sources/printers/shui/connection.cpp"
 	"./sources/printers/shui/upload.cpp"
- "sources/core/async.cpp" "sources/printers/shui/storage.cpp")
+ "sources/core/async.cpp" "sources/printers/shui/storage.cpp" "sources/printers/printer.cpp"  "sources/interfaces/octo_print.cpp")
 
 target_link_libraries(3dPrinterProxy 
 	PUBLIC bsl
