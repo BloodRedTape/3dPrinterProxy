@@ -28,6 +28,8 @@ public:
 
 	//std::vector<std::string> GetStoredFiles()const;
 
+	std::string PreprocessGCode(const std::string &content);
+
 	const GCodeFileRuntimeData *GetRuntimeData(const std::string &long_filename)const;
 
 	const std::string *GetLongFilename(const std::string &_83_filename)const;

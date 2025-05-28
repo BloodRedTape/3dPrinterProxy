@@ -6,10 +6,10 @@
 #include "upload.hpp"
 #include <bsl/log.hpp>
 #include "pch/std.hpp"
-
+#include "core/image.hpp"
+    
 #define WITH_PROFILE 1
 #include "core/perf.hpp"
-#define WITH_UPDATE_METADATA_BEFORE_UPLOAD 1
 
 DEFINE_LOG_CATEGORY(ShuiStorage)
 
@@ -95,9 +95,11 @@ ShuiPrinterStorage::ShuiPrinterStorage(const std::string& ip, const std::filesys
 
 void ShuiPrinterStorage::UploadGCodeFileAsync(const std::string& filename, const std::string& content, bool print, std::function<void(bool)> callback) {
 
-#if WITH_UPDATE_METADATA_BEFORE_UPLOAD
+#if WITH_PRINTER_DEBUG
     OnFileUploaded(filename, content);
 #endif
+
+    std::string processed_content = PreprocessGCode(content);
 
     auto OnUploaded = [=](bool success, std::string result) {
         defer{
@@ -105,13 +107,74 @@ void ShuiPrinterStorage::UploadGCodeFileAsync(const std::string& filename, const
             std::call(callback, success);
         };
         
-#if !WITH_UPDATE_METADATA_BEFORE_UPLOAD
+#if !WITH_PRINTER_DEBUG
         if(success)
             OnFileUploaded(filename, content);
 #endif
     };
 
-    std::make_shared<ShuiUpload>(m_Ip, filename, content, print, OnUploaded)->RunAsync();
+    std::make_shared<ShuiUpload>(m_Ip, filename, std::move(processed_content), print, OnUploaded)->RunAsync();
+}
+
+std::string ShuiPrinterStorage::PreprocessGCode(const std::string &content) {
+    static std::string_view ThumbnailBegin = "; thumbnail begin ";
+    static std::string_view ThumbnailEnd = "; thumbnail end";
+    static std::string_view LinePrefix = "; ";
+    static std::string_view LineSuffix = "\n";
+
+    static std::string ShuiPreviewStart50 = ";SHUI PREVIEW 50x50\n";
+    static std::string ShuiPreviewStart100 = ";SHUI PREVIEW 100x100\n";
+    static std::string ShuiPreviewEnd = ";End of SHUI PREVIEW\n";
+
+    std::string result;
+
+    StringStream stream(content);
+
+    std::vector<Image> previews;
+    std::string preview_data;
+
+    bool reading_preview = false;
+
+    while (auto line_opt = stream.GetLine()) {
+        std::string_view line = line_opt.value();
+
+        if (line.starts_with(ThumbnailEnd)) {
+            auto image = Image::LoadFromBase64(preview_data);
+
+            if (image.has_value()) {
+                previews.push_back(std::move(image.value()));
+            }
+            reading_preview = false;
+            continue;
+        }
+
+        if (line.starts_with(ThumbnailBegin)) {
+            preview_data.clear();
+            reading_preview = true;
+            continue;
+        }
+
+        if (reading_preview) {
+            if(line.starts_with(LinePrefix))
+                line = line.substr(LinePrefix.size());
+
+            if(line.ends_with(LineSuffix))
+                line = line.substr(0, line.size() - LineSuffix.size());
+
+            preview_data.append(line);
+        }
+    }
+
+
+    if(!previews.size())
+        return content;
+    
+    // biggest one
+    Image &base = previews.back();
+
+    return ShuiPreviewStart50 + base.Resize(50,50).ToSHUI() 
+        + base.Resize(200, 200).ToSHUI() + ShuiPreviewEnd 
+        + content;
 }
 
 const GCodeFileRuntimeData* ShuiPrinterStorage::GetRuntimeData(const std::string& long_filename) const{

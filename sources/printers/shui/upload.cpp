@@ -5,11 +5,11 @@
 #include <iomanip>
 #include <bsl/log.hpp>
 
-ShuiUpload::ShuiUpload(const std::string& ip, const std::string& filename, const std::string& content, bool start_printing, CompletionCallback callback): 
+ShuiUpload::ShuiUpload(const std::string& ip, const std::string& filename, std::string&& content, bool start_printing, CompletionCallback callback): 
     m_Socket(Async::Context()), 
     m_Ip(ip), 
     m_Filename(filename), 
-    m_Content(content), 
+    m_Content(std::move(content)), 
     m_StartPrinting(start_printing), 
     m_Callback(callback) 
 {

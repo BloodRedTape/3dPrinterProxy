@@ -137,9 +137,11 @@ static std::vector<MultipartPart> ParseMultipartData(std::string_view body, std:
 }
 
 void OctoPrintInterface::PostFilesLocal(const beauty::request& req, beauty::response& resp) {
+#if !WITH_PRINTER_DEBUG
     if(!m_Printer || !m_Printer->IsConnected()) {
         throw beauty::http_error::server::service_unavailable();
     }
+#endif
 
     std::string_view contentType = req.base().at("Content-Type");
     std::string_view boundary = ExtractBoundary(contentType);
@@ -150,8 +152,6 @@ void OctoPrintInterface::PostFilesLocal(const beauty::request& req, beauty::resp
     
     std::vector<MultipartPart> parts = ParseMultipartData(req.body(), boundary);
 
-    Println("Body: %", parts[2].content);
-    
     std::string_view print;
     std::string_view file_content;
     std::string filename;

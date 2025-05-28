@@ -20,7 +20,7 @@ private:
     boost::beast::http::response<boost::beast::http::string_body> m_Response;
 
 public:
-    ShuiUpload(const std::string& ip, const std::string& filename, const std::string& content, bool start_printing = false, CompletionCallback callback = nullptr);
+    ShuiUpload(const std::string& ip, const std::string& filename, std::string&& content, bool start_printing = false, CompletionCallback callback = nullptr);
     
     void RunAsync();
 
