@@ -337,9 +337,7 @@ void ShuiPrinter::UpdateStateFromSdCardStatus(const std::string& line) {
     
     bool changed = false;
     
-    defer {
-        if(changed) std::call(OnStateChanged);
-    };
+    if(changed) std::call(OnStateChanged);
 
     if (!State().Print.has_value()){
         State().Print = PrintState();
@@ -351,8 +349,10 @@ void ShuiPrinter::UpdateStateFromSdCardStatus(const std::string& line) {
     errno = 0;
     std::int64_t current = std::atoi(current_string.c_str());
     std::int64_t target = std::atoi(target_string.c_str());
-    if(errno)
+    if(errno){
+        if(changed) std::call(OnStateChanged);
         return;
+    }
     
     if(print.CurrentBytesPrinted != current)
         changed = true;
@@ -383,7 +383,8 @@ void ShuiPrinter::UpdateStateFromSdCardStatus(const std::string& line) {
         print.Layer = state.Layer;
         print.Height = state.Height;
     }
-    
+
+    if(changed) std::call(OnStateChanged);
 }
 
 void ShuiPrinter::UpdateStateFromSelectedFile(const std::string& line) {

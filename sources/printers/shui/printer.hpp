@@ -70,7 +70,7 @@ public:
 
 	void UpdateStateFromFeedRate(const std::string &line);
 
-	std::optional<PrinterState> GetPrinterState()const;
+	std::optional<PrinterState> GetPrinterState()const override;
 
 	bool TargetTemperaturesReached()const;
 

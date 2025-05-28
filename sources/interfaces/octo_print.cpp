@@ -2,19 +2,16 @@
 #include <bsl/log.hpp>
 #include "pch/asio.hpp"
 
-OctoPrintInterface::OctoPrintInterface(Printer *printer):
+OctoPrintInterface::OctoPrintInterface(std::shared_ptr<Printer> printer, std::uint16_t port):
 	m_Printer(printer)
 {
 	m_Server.add_route("/api/version")
 		.get(std::bind(&OctoPrintInterface::GetVersion, this, std::placeholders::_1, std::placeholders::_2));
 	m_Server.add_route("/api/files/local")
 		.post(std::bind(&OctoPrintInterface::PostFilesLocal, this, std::placeholders::_1, std::placeholders::_2));
-}
 
-void OctoPrintInterface::Listen(std::uint16_t port) {
-	m_Server.listen(port);
+    m_Server.listen(port);
 }
-
 
 void OctoPrintInterface::RunAsync() {
 	//Idk

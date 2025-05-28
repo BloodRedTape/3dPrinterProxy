@@ -3,6 +3,7 @@
 #include <bsl/enum.hpp>
 #include "pch/std.hpp"
 #include "storage.hpp"
+#include "printers/state.hpp"
 
 BSL_ENUM(GCodeResult,
 	Ok,
@@ -48,4 +49,6 @@ public:
 	virtual bool IsConnected()const = 0;
 
 	virtual PrinterStorage &Storage() = 0;
+
+	virtual std::optional<PrinterState> GetPrinterState()const = 0;
 };

@@ -4,15 +4,46 @@
 #include "printers/shui/printer.hpp"
 #include "interfaces/octo_print.hpp"
 #include "core/async.hpp"
+#include <bsl/enum.hpp>
+
+#ifdef SendMessage
+#undef SendMessage
+#endif
+
+
+BSL_ENUM(MessageType,
+    init,
+    state
+);
+
+struct Message {
+    std::string type;
+    std::string id;
+    nlohmann::json content;
+
+    NLOHMANN_DEFINE_TYPE_INTRUSIVE_WITH_DEFAULT(Message, type, id, content);
+
+    std::string ToJson()const {
+        return nlohmann::json(*this).dump();
+    }
+};
+
+struct MessageSet {
+    std::string property;
+    nlohmann::json value;
+
+    NLOHMANN_DEFINE_TYPE_INTRUSIVE_WITH_DEFAULT(MessageSet, property, value);
+};
 
 class PrinterProxy {
 private:
     beauty::application m_BeautyApplication{Async::Context()};
     beauty::server m_Server{m_BeautyApplication};
     
-    ShuiPrinter m_Printer{"192.168.1.179", 8080, "./printers/twotreesbluer"};
+    std::map<std::string, std::shared_ptr<Printer>> m_Printers;
+    std::vector<std::unique_ptr<OctoPrintInterface>> m_Interfaces;
 
-    OctoPrintInterface m_Interface{&m_Printer};
+    std::map<std::string, std::weak_ptr<beauty::websocket_session>> m_Sessions;
 public:
     PrinterProxy();
 
@@ -24,9 +55,18 @@ public:
 
     void GetPrinters(const beauty::request &req, beauty::response &resp);
 
-    void GetPrinterValue(const beauty::request &req, beauty::response &resp);
+    void OnSet(const std::string &id, const nlohmann::json& content);
 
-    void PostPrinterValue(const beauty::request &req, beauty::response &resp);
+    void WsOnConnect(const beauty::ws_context& ctx);
+    void WsOnReceive(const beauty::ws_context& ctx, const char*, std::size_t, bool);
+    void WsOnDisconnect(const beauty::ws_context& ctx);
+    void WsOnError(boost::system::error_code, const char* what);
 
-    void PostStorageUpload(const beauty::request &req, beauty::response &resp);
+    void SendMessage(std::weak_ptr<beauty::websocket_session> session, const std::string &id, MessageType type, const nlohmann::json &content);
+    void BroadcastMessage(const std::string &id, MessageType type, const nlohmann::json &content);
+
+    static nlohmann::json StateToJson(const std::optional<PrinterState> &state);
+
+    std::vector<std::string> PrintersIds()const;
+
 };

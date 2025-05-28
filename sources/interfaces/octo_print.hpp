@@ -9,11 +9,9 @@ private:
     beauty::application m_BeautyApplication{Async::Context()};
     beauty::server m_Server{m_BeautyApplication};
     
-    Printer* m_Printer = nullptr;
+    std::shared_ptr<Printer> m_Printer;
 public:
-    OctoPrintInterface(Printer *printer);
-
-    void Listen(std::uint16_t port);
+    OctoPrintInterface(std::shared_ptr<Printer> printer, std::uint16_t port);
 	
     void RunAsync();
 
