@@ -94,24 +94,17 @@ ShuiPrinterStorage::ShuiPrinterStorage(const std::string& ip, const std::filesys
 }
 
 void ShuiPrinterStorage::UploadGCodeFileAsync(const std::string& filename, const std::string& content, bool print, std::function<void(bool)> callback) {
-
-#if WITH_PRINTER_DEBUG
-    OnFileUploaded(filename, content);
-#endif
-
-    std::string processed_content = PreprocessGCode(content);
-
-    auto OnUploaded = [=](bool success, std::string result) {
+    auto OnUploaded = [this, callback = std::move(callback), filename = filename](bool success, std::string result, const std::string *content) {
         defer{
             Println("Result %, Filename: %, 8.3: %", result, filename, std::safe(Get83Filename(filename)));
             std::call(callback, success);
         };
         
-#if !WITH_PRINTER_DEBUG
-        if(success)
-            OnFileUploaded(filename, content);
-#endif
+        if(success && content)
+            OnFileUploaded(filename, *content);
     };
+
+    std::string processed_content = PreprocessGCode(content);
 
     std::make_shared<ShuiUpload>(m_Ip, filename, std::move(processed_content), print, OnUploaded)->RunAsync();
 }
@@ -178,10 +171,15 @@ std::string ShuiPrinterStorage::PreprocessGCode(const std::string &content) {
 }
 
 const GCodeFileRuntimeData* ShuiPrinterStorage::GetRuntimeData(const std::string& long_filename) const{
-    if(!m_FilenameToFile.count(long_filename) || !m_ContentHashToRuntimeData.count(m_FilenameToFile.at(long_filename).ContentHash))
+    if(!m_FilenameToContentHash.count(long_filename))
+        return nullptr;
+    
+    auto hash = m_FilenameToContentHash.at(long_filename);
+
+    if(!m_ContentHashToRuntimeData.count(hash))
         return nullptr;
 
-    return &m_ContentHashToRuntimeData.at(m_FilenameToFile.at(long_filename).ContentHash);
+    return &m_ContentHashToRuntimeData.at(hash);
 }
 
 const std::string* ShuiPrinterStorage::GetLongFilename(const std::string& _83_name)const {
@@ -288,22 +286,18 @@ std::string ShuiPrinterStorage::ConvertTo83Revisioned(const std::string& long_fi
 bool ShuiPrinterStorage::OnFileUploaded(const std::string& filename, const std::string& content){
     PROFILE_SCOPE(ShuiPrinterStorage, OnFileUploaded);
 
-    //Overwrite old file
-    if(ExistsLong(filename)){
-        if(m_FilenameToFile.count(filename)) {
-            m_ContentHashToRuntimeData.erase(m_FilenameToFile.at(filename).ContentHash);
-        }
-    //Crete new file
-    }else{
+    if(!ExistsLong(filename)){
         std::string _83 = Get83(filename);
 
-        if (!_83.size()) 
+        if (!_83.size()){
+            LogShuiStorage(Error, "Can't generate 8.3 filename for '%'", filename);
             return false;
+        }
 
         m_83ToLongFilename.emplace(_83, filename);
     }
     
-    //XXX replace with bette
+    //XXX replace with better one
     std::size_t hash = 0;
     {
         PROFILE_SCOPE(ShuiPrinterStorage, OnFileUploaded_Hash);
@@ -314,10 +308,15 @@ bool ShuiPrinterStorage::OnFileUploaded(const std::string& filename, const std::
         PROFILE_SCOPE(ShuiPrinterStorage, OnFileUploaded_ParseRuntimeData);
         runtime_data = ParseFromFile(content);
     }
-
-    m_ContentHashToRuntimeData.emplace(hash, std::move(runtime_data));
     
-    m_FilenameToFile.emplace(filename, GCodeFile{hash});
+    if (m_FilenameToContentHash.count(filename)) {
+        std::size_t old_hash = m_FilenameToContentHash.at(filename);
+
+        if(m_ContentHashToRuntimeData.count(old_hash))
+            m_ContentHashToRuntimeData.erase(old_hash);
+    }
+    m_FilenameToContentHash.emplace(filename, hash);
+    m_ContentHashToRuntimeData.emplace(hash, std::move(runtime_data));
 
     {
         PROFILE_SCOPE(ShuiPrinterStorage, OnFileUploaded_SaveToFile);

@@ -60,7 +60,7 @@ void ShuiUpload::Connect() {
     boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::make_address(m_Ip, ec), 80);
     if(ec) {
         if (m_Callback) {
-            m_Callback(false, "Invalid IP address: " + ec.message());
+            m_Callback(false, "Invalid IP address: " + ec.message(), nullptr);
         }
         return;
     }
@@ -71,7 +71,7 @@ void ShuiUpload::Connect() {
 void ShuiUpload::OnConnect(boost::beast::error_code ec) {
     if(ec) {
         if (m_Callback) {
-            m_Callback(false, "Connect failed: " + ec.message());
+            m_Callback(false, "Connect failed: " + ec.message(), nullptr);
         }
         return;
     }
@@ -84,7 +84,7 @@ void ShuiUpload::OnConnect(boost::beast::error_code ec) {
 void ShuiUpload::OnWrite(boost::beast::error_code ec, std::size_t bytes_transferred) {
     if(ec) {
         if (m_Callback) {
-            m_Callback(false, "Write failed: " + ec.message());
+            m_Callback(false, "Write failed: " + ec.message(), nullptr);
         }
         return;
     }
@@ -95,7 +95,7 @@ void ShuiUpload::OnWrite(boost::beast::error_code ec, std::size_t bytes_transfer
 void ShuiUpload::OnRead(boost::beast::error_code ec, std::size_t bytes_transferred) {
     if(ec && ec != boost::beast::errc::not_connected) {
         if (m_Callback) {
-            m_Callback(false, "Read failed: " + ec.message());
+            m_Callback(false, "Read failed: " + ec.message(), nullptr);
         }
         return;
     }
@@ -106,10 +106,10 @@ void ShuiUpload::OnRead(boost::beast::error_code ec, std::size_t bytes_transferr
 
     if (m_Callback) {
         if (success) {
-            m_Callback(true, "File uploaded successfully");
+            m_Callback(true, "File uploaded successfully", &m_Content);
         } else {
             m_Callback(false, "Server returned error code: " + 
-                      std::to_string(static_cast<int>(m_Response.result())));
+                      std::to_string(static_cast<int>(m_Response.result())), nullptr);
         }
     }
     

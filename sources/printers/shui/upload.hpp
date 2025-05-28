@@ -5,7 +5,7 @@
 
 class ShuiUpload: public std::enable_shared_from_this<ShuiUpload> {
 public:
-    using CompletionCallback = std::function<void(bool success, const std::string& message)>;
+    using CompletionCallback = std::function<void(bool success, const std::string& message, const std::string *content)>;
 
 private:
     boost::asio::ip::tcp::socket m_Socket;

@@ -73,23 +73,6 @@ struct GCodeFileRuntimeData {
 
 	NLOHMANN_DEFINE_TYPE_INTRUSIVE_WITH_DEFAULT(GCodeFileRuntimeData, States, Index)
 
-	GCodeRuntimeState GetStateNear(std::int64_t printed_byte)const {
-		if(printed_byte == 0)
-			return States.size() ? States.front() : GCodeRuntimeState();
-		
-		for (int i = 0; i<Index.size(); i++) {
-			std::int32_t byte = Index[i];
-
-			if (byte < printed_byte)
-				continue;
-			
-			if(i >= States.size())
-				return States.size() ? States.back() : GCodeRuntimeState();
-			
-			return States[i];
-		}
-
-		return States.size() ? States.back() : GCodeRuntimeState();
-	}
+	GCodeRuntimeState GetStateNear(std::int64_t printed_byte)const;
 };
 
