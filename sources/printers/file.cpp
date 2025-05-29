@@ -109,8 +109,6 @@ GCodeFileMetadata GCodeFileMetadata::Parse(const std::string& content) {
                         if(ch == 'h')
                             print_time += units * 60 * 60;
 
-                        LogFile(Display, "Parsed %%", units, ch);
-                        
                         number.clear();
                     }
                 }
