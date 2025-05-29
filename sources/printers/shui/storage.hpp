@@ -57,5 +57,5 @@ private:
 
 	void Save(const GCodeFileEntry& entry, const std::string& _83)const;
 
-	bool Load();
+	void Load();
 };

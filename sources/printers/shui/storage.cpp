@@ -257,7 +257,7 @@ void ShuiPrinterStorage::Save(const GCodeFileEntry& entry, const std::string& _8
     entry.SaveToDir(entry_path);
 }
 
-bool ShuiPrinterStorage::Load() {
+void ShuiPrinterStorage::Load() {
     for (auto dir_entry : std::filesystem::directory_iterator(m_DataPath)) {
         if(!dir_entry.is_directory())
             continue;
