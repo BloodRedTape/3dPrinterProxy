@@ -2,12 +2,7 @@
 
 #include "pch/std.hpp"
 #include "pch/json.hpp"
-
-struct GCodeFileThumbnail {
-	std::int32_t Width;
-	std::int32_t Height;
-	//std::string ImageData;
-};
+#include "core/image.hpp"
 
 struct GCodeFileFilament {
 	std::string Type;
@@ -21,10 +16,9 @@ struct GCodeFileFilament {
 };
 
 struct GCodeFileMetadata {
-	std::string Filepath;
-	std::int64_t BytesSize;
+	std::int64_t BytesSize = 0;
 
-	std::vector<GCodeFileThumbnail> Thumbnails;
+	std::vector<Image> Previews;
 	std::uint64_t SlicedAtUnixtime;
 	std::int64_t EstimatedPrintTime;
 
@@ -47,32 +41,10 @@ struct GCodeFileMetadata {
 
 	std::vector<GCodeFileFilament> Filaments;
 	
-};
+	NLOHMANN_DEFINE_TYPE_INTRUSIVE_WITH_DEFAULT(GCodeFileMetadata, BytesSize, Previews)
 
-struct GCodeRuntimeState {
-	float Percent = 0.f;
-	std::int64_t Layer = 0;
-	float Height = 0.f;
-	//std::int32_t FillamentIndex;
+	static std::vector<Image> GetPreviews(const std::string& content);
 
-	NLOHMANN_DEFINE_TYPE_INTRUSIVE_WITH_DEFAULT(GCodeRuntimeState, Percent, Layer, Height)
-	
-	bool operator==(const GCodeRuntimeState& other)const{
-		return Percent == other.Percent && Layer == other.Layer && Height == other.Height;
-	}
-
-	bool operator!=(const GCodeRuntimeState& other)const{
-		return !(*this == other);
-	}
-};
-
-struct GCodeFileRuntimeData {
-	std::vector<GCodeRuntimeState> States;
-	//Can't imagine file more that 4gigs
-	std::vector<std::int32_t> Index;
-
-	NLOHMANN_DEFINE_TYPE_INTRUSIVE_WITH_DEFAULT(GCodeFileRuntimeData, States, Index)
-
-	GCodeRuntimeState GetStateNear(std::int64_t printed_byte)const;
+	static GCodeFileMetadata Parse(const std::string &content);
 };
 

@@ -9,6 +9,9 @@ PrinterProxy::PrinterProxy(){
 		.get(std::bind(&PrinterProxy::GetInfo, this, std::placeholders::_1, std::placeholders::_2));
     m_Server.add_route("/api/v1/printers")
 		.get(std::bind(&PrinterProxy::GetPrinters, this, std::placeholders::_1, std::placeholders::_2));
+
+    m_Server.add_route("/api/v1/printers/:id/files/:filename/preview")
+		.get(std::bind(&PrinterProxy::GetPreview, this, std::placeholders::_1, std::placeholders::_2));
 	{
 		auto id = "ttb_1";
 		auto printer = std::make_shared<ShuiPrinter>("192.168.1.179", 8080, Format("./printers/%", id));
@@ -54,6 +57,26 @@ void PrinterProxy::GetInfo(const beauty::request& req, beauty::response& resp){
 void PrinterProxy::GetPrinters(const beauty::request& req, beauty::response& resp) {
 	resp.set(beauty::content_type::application_json);
 	resp.body() = nlohmann::json(PrintersIds()).dump();
+}
+
+void PrinterProxy::GetPreview(const beauty::request& req, beauty::response& resp) {
+	auto id = req.a("id").as_string();
+	auto filename = req.a("filename").as_string();
+
+	if(!m_Printers.count(id))
+		throw beauty::http_error::client::not_found();
+	
+	auto printer = m_Printers.at(id);
+	const GCodeFileMetadata *metadata = printer->Storage().GetMetadata(filename);
+
+	if(!metadata)
+		throw beauty::http_error::client::not_found();
+	
+	if(!metadata->Previews.size())
+		throw beauty::http_error::client::not_found();
+
+	resp.body() = metadata->Previews.back().ToPng();
+	resp.set(beauty::content_type::image_png);
 }
 
 void PrinterProxy::OnSet(const std::string& id, const nlohmann::json& content) {

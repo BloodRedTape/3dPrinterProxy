@@ -7,90 +7,18 @@
 #include <bsl/log.hpp>
 #include "pch/std.hpp"
 #include "core/image.hpp"
+#include "core/string_stream.hpp"
     
 #define WITH_PROFILE 1
 #include "core/perf.hpp"
 
 DEFINE_LOG_CATEGORY(ShuiStorage)
 
-class StringStream {
-    const std::string &m_Input;
-    std::size_t m_ReadPosition = 0;
-public:
-    StringStream(const std::string &input):
-        m_Input(input)
-    {}
-
-
-    std::optional<std::string_view> GetLine(char delimiter = '\n'){
-        if(m_ReadPosition >= m_Input.size())
-            return std::nullopt;
-
-        std::size_t end = m_ReadPosition;
-
-        while(end < m_Input.size() && m_Input[end] != delimiter)
-            end++;
-
-        std::string_view result(&m_Input[m_ReadPosition], &m_Input[end]);
-
-        m_ReadPosition = end + 1;
-
-        return result;
-    }
-
-    std::size_t ReadPosition()const{
-        return m_ReadPosition;
-    }
-};
-
-static GCodeFileRuntimeData ParseFromFile(const std::string& content) {
-    StringStream stream(content);
-
-    GCodeFileRuntimeData result;
-    
-    GCodeRuntimeState state;
-
-    while (auto line_opt = stream.GetLine()) {
-        std::string_view line = line_opt.value();
-
-        static constexpr const char *SetPrintProgressPrefix = "M73 P";
-        static constexpr const char *SetPrintLayerPrefix = "M2033.1 L";
-        static constexpr const char *SetPrintHeightPrefix = ";Z:";
-
-        GCodeRuntimeState new_state = state;
-
-        if (line.starts_with(SetPrintProgressPrefix)){
-            auto text = std::string(line.substr(std::strlen(SetPrintProgressPrefix)));
-            new_state.Percent = std::stoi(text);
-        }
-        
-        if (line.starts_with(SetPrintLayerPrefix)){
-            auto text = std::string(line.substr(std::strlen(SetPrintLayerPrefix)));
-            new_state.Layer = std::stoi(text);
-        }
-        
-        if (line.starts_with(SetPrintHeightPrefix)){
-            auto text = std::string(line.substr(std::strlen(SetPrintHeightPrefix)));
-            new_state.Height = std::round(std::stof(text) * 10.f) / 10.f;
-        }
-
-        if (new_state != state) {
-            state = new_state;
-            result.Index.push_back(stream.ReadPosition());
-            result.States.push_back(state);
-        }
-    }
-
-    return result;
-}
-
 ShuiPrinterStorage::ShuiPrinterStorage(const std::string& ip, const std::filesystem::path &data_path):
     m_Ip(ip),
     m_DataPath(data_path)
 {
-    if (!LoadFromFile()) {
-        LogShuiStorage(Warning, "Can't load storage from file");
-    }
+    Load();
 }
 
 void ShuiPrinterStorage::UploadGCodeFileAsync(const std::string& filename, const std::string& content, bool print, std::function<void(bool)> callback) {
@@ -109,56 +37,31 @@ void ShuiPrinterStorage::UploadGCodeFileAsync(const std::string& filename, const
     std::make_shared<ShuiUpload>(m_Ip, filename, std::move(processed_content), print, OnUploaded)->RunAsync();
 }
 
-std::string ShuiPrinterStorage::PreprocessGCode(const std::string &content) {
-    static std::string_view ThumbnailBegin = "; thumbnail begin ";
-    static std::string_view ThumbnailEnd = "; thumbnail end";
-    static std::string_view LinePrefix = "; ";
-    static std::string_view LineSuffix = "\n";
 
+const GCodeFileMetadata* ShuiPrinterStorage::GetMetadata(const std::string& long_filename)const {
+    const std::string *_83 = Get83Filename(long_filename);
+
+    if(!_83)
+        return nullptr;
+    
+    if(!m_83ToFile.count(*_83))
+        return nullptr;
+
+    const GCodeFileEntry& file = m_83ToFile.at(*_83);
+    
+    if(!file.Metadata.count(file.ContentHash))
+        return nullptr;
+
+    return &file.Metadata.at(file.ContentHash);
+}
+
+std::string ShuiPrinterStorage::PreprocessGCode(const std::string &content) {
     static std::string ShuiPreviewStart50 = ";SHUI PREVIEW 50x50\n";
     static std::string ShuiPreviewStart100 = ";SHUI PREVIEW 100x100\n";
     static std::string ShuiPreviewEnd = ";End of SHUI PREVIEW\n";
 
-    std::string result;
-
-    StringStream stream(content);
-
-    std::vector<Image> previews;
-    std::string preview_data;
-
-    bool reading_preview = false;
-
-    while (auto line_opt = stream.GetLine()) {
-        std::string_view line = line_opt.value();
-
-        if (line.starts_with(ThumbnailEnd)) {
-            auto image = Image::LoadFromBase64(preview_data);
-
-            if (image.has_value()) {
-                previews.push_back(std::move(image.value()));
-            }
-            reading_preview = false;
-            continue;
-        }
-
-        if (line.starts_with(ThumbnailBegin)) {
-            preview_data.clear();
-            reading_preview = true;
-            continue;
-        }
-
-        if (reading_preview) {
-            if(line.starts_with(LinePrefix))
-                line = line.substr(LinePrefix.size());
-
-            if(line.ends_with(LineSuffix))
-                line = line.substr(0, line.size() - LineSuffix.size());
-
-            preview_data.append(line);
-        }
-    }
-
-
+    std::vector<Image> previews = GCodeFileMetadata::GetPreviews(content);
+    
     if(!previews.size())
         return content;
     
@@ -171,29 +74,31 @@ std::string ShuiPrinterStorage::PreprocessGCode(const std::string &content) {
 }
 
 const GCodeFileRuntimeData* ShuiPrinterStorage::GetRuntimeData(const std::string& long_filename) const{
-    if(!m_FilenameToContentHash.count(long_filename))
+    const std::string *_83 = Get83Filename(long_filename);
+
+    if(!_83)
         return nullptr;
     
-    auto hash = m_FilenameToContentHash.at(long_filename);
-
-    if(!m_ContentHashToRuntimeData.count(hash))
+    if(!m_83ToFile.count(*_83))
         return nullptr;
 
-    return &m_ContentHashToRuntimeData.at(hash);
+    const GCodeFileEntry& file = m_83ToFile.at(*_83);
+
+    return &file.RuntimeData;
 }
 
 const std::string* ShuiPrinterStorage::GetLongFilename(const std::string& _83_name)const {
-	auto it = m_83ToLongFilename.find(_83_name);
+	auto it = m_83ToFile.find(_83_name);
 
-	if(it == m_83ToLongFilename.end())
+	if(it == m_83ToFile.end())
 		return nullptr;
 
-	return &it->second;
+	return &it->second.LongFilename;
 }
 
 const std::string* ShuiPrinterStorage::Get83Filename(const std::string& long_filename) const {
-    for (const auto& [_83, _long] : m_83ToLongFilename) {
-        if(_long == long_filename)
+    for (const auto& [_83, file] : m_83ToFile) {
+        if(file.LongFilename == long_filename)
             return &_83;
     }
     return nullptr;
@@ -210,13 +115,13 @@ bool ShuiPrinterStorage::Exists83(const std::string& _83_filename) const{
 std::vector<std::string> ShuiPrinterStorage::GetStoredFiles83() const{
     std::vector<std::string> result;
 
-    for (const auto &[_83, _long] : m_83ToLongFilename) 
+    for (const auto &[_83, _] : m_83ToFile) 
         result.push_back(_83);
 
     return result;
 }
 
-std::string ShuiPrinterStorage::Get83(const std::string& long_filename) const{
+std::string ShuiPrinterStorage::Make83Filename(const std::string& long_filename) const{
     {
         auto *_83 = Get83Filename(long_filename);
 
@@ -285,66 +190,86 @@ std::string ShuiPrinterStorage::ConvertTo83Revisioned(const std::string& long_fi
 
 bool ShuiPrinterStorage::OnFileUploaded(const std::string& filename, const std::string& content){
     PROFILE_SCOPE(ShuiPrinterStorage, OnFileUploaded);
-
+    
     if(!ExistsLong(filename)){
-        std::string _83 = Get83(filename);
+        std::string _83 = Make83Filename(filename);
 
         if (!_83.size()){
             LogShuiStorage(Error, "Can't generate 8.3 filename for '%'", filename);
             return false;
         }
-
-        m_83ToLongFilename.emplace(_83, filename);
+        
+        GCodeFileEntry entry;
+        entry.LongFilename = filename;
+        m_83ToFile.emplace(_83, std::move(entry));
     }
     
-    //XXX replace with better one
-    std::size_t hash = 0;
+    const std::string* _83_ptr = Get83Filename(filename);
+
+    if (!_83_ptr) {
+        LogShuiStorage(Error, "83 filename for '%' was not ever created", filename);
+        return false;
+    }
+
+    std::string _83 = *_83_ptr;
+
+    GCodeFileEntry& entry = m_83ToFile.at(_83);
+    
     {
         PROFILE_SCOPE(ShuiPrinterStorage, OnFileUploaded_Hash);
-        hash = std::hash<std::string>()(content);
+        entry.ContentHash = std::hash<std::string>()(content);
     } 
-    GCodeFileRuntimeData runtime_data;
+
     {
         PROFILE_SCOPE(ShuiPrinterStorage, OnFileUploaded_ParseRuntimeData);
-        runtime_data = ParseFromFile(content);
+        entry.RuntimeData = GCodeFileRuntimeData::Parse(content);
     }
     
-    if (m_FilenameToContentHash.count(filename)) {
-        std::size_t old_hash = m_FilenameToContentHash.at(filename);
-
-        if(m_ContentHashToRuntimeData.count(old_hash))
-            m_ContentHashToRuntimeData.erase(old_hash);
-    }
-    m_FilenameToContentHash.emplace(filename, hash);
-    m_ContentHashToRuntimeData.emplace(hash, std::move(runtime_data));
+    entry.Metadata.emplace(entry.ContentHash, GCodeFileMetadata::Parse(content));
 
     {
         PROFILE_SCOPE(ShuiPrinterStorage, OnFileUploaded_SaveToFile);
-        SaveToFile();
+        Save(entry, _83);
     }
 
     return true;
 }
 
-static std::string DbFilepath(const std::filesystem::path& data_path) {
-    return (data_path / "all.json").string();
-}
-
-void ShuiPrinterStorage::SaveToFile()const{
-    WriteEntireFile(DbFilepath(m_DataPath), nlohmann::json(*this).dump());
-}
-
-bool ShuiPrinterStorage::LoadFromFile(){
-    auto content = ReadEntireFile(DbFilepath(m_DataPath));
+std::optional<GCodeFileEntry> GCodeFileEntry::LoadFromDir(std::filesystem::path directory) {
     
     try{
-        auto json = nlohmann::json::parse(content, nullptr, false, false);
+        GCodeFileEntry entry = nlohmann::json::parse(ReadEntireFile((directory / "entry.json").string()), nullptr, false, false);
         
-        from_json(json, *this);
-
-        return true;
+        return entry;
     }catch (...) {
-        return false;
+        return std::nullopt;
+    }
+}
+
+void GCodeFileEntry::SaveToDir(const std::filesystem::path& directory)const{
+    WriteEntireFile((directory / "entry.json").string(), nlohmann::json(*this).dump());
+}
+
+void ShuiPrinterStorage::Save(const GCodeFileEntry& entry, const std::string& _83)const {
+    auto entry_path = m_DataPath / _83;
+    std::filesystem::create_directories(entry_path);
+    
+    entry.SaveToDir(entry_path);
+}
+
+bool ShuiPrinterStorage::Load() {
+    for (auto dir_entry : std::filesystem::directory_iterator(m_DataPath)) {
+        if(!dir_entry.is_directory())
+            continue;
+
+        std::string _83 = dir_entry.path().filename().string();
+
+        auto entry = GCodeFileEntry::LoadFromDir(dir_entry.path());
+
+        if(!entry.has_value())
+            continue;
+        
+        m_83ToFile.emplace(_83, std::move(entry.value()));
     }
 }
 

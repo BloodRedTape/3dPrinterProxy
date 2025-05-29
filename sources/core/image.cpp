@@ -4,6 +4,8 @@
 #include "stb_image.h"
 #define STB_IMAGE_RESIZE_IMPLEMENTATION
 #include "stb_image_resize.h"
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
 #include <boost/endian/conversion.hpp>
 
 Image::Image(std::int32_t width, std::int32_t height, std::vector<std::uint32_t>&& data):
@@ -79,6 +81,23 @@ std::string Image::ToSHUI() const{
     return result;
 }
 
+std::string Image::ToPng()const {
+    int len = 0;
+    const unsigned char *mem = stbi_write_png_to_mem((const unsigned char *)m_Data.data(), m_Width * sizeof(std::uint32_t), m_Width, m_Height, 4, &len);
+
+    std::string result(len, '\0');
+
+    std::memcpy(result.data(), mem, len);
+    
+    STBIW_FREE((void*)mem);
+
+    return result;
+}
+
+std::string Image::ToBase64() const{
+    return Base64::Encode(ToPng());
+}
+
 std::optional<Image> Image::LoadFromMemory(const void* memory, std::size_t size){
     int width = 0, height = 0, channels = 0;
 
@@ -109,4 +128,11 @@ std::optional<Image> Image::LoadFromBase64(const std::string& base64){
         return std::nullopt;
 
     return LoadFromMemory(memory.data(), memory.size());
+}
+
+void to_json(nlohmann::json& json, const Image& image) {
+    json = image.ToBase64();
+}
+void from_json(const nlohmann::json& json, Image& image) {
+    image = Image::LoadFromBase64(json.get<std::string>()).value_or(Image());
 }
