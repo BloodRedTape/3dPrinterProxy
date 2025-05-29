@@ -57,6 +57,8 @@ public:
 
     void GetPreview(const beauty::request &req, beauty::response &resp);
 
+    void GetMetadata(const beauty::request &req, beauty::response &resp);
+
     void OnSet(const std::string &id, const nlohmann::json& content);
 
     void WsOnConnect(const beauty::ws_context& ctx);
