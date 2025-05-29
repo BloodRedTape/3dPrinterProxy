@@ -68,7 +68,7 @@ void ShuiPrinterConnection::Connect() {
 
 
 void ShuiPrinterConnection::HandleConnect(const boost::system::error_code& error) {
-	if(error == boost::system::errc::operation_canceled)
+	if(error == boost::system::errc::operation_canceled || error == boost::system::errc::host_unreachable)
 		return;
 
 	if (error) {
