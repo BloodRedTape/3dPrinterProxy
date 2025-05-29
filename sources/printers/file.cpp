@@ -1,5 +1,8 @@
 #include "file.hpp"
-#include "core/string_stream.hpp"
+#include "core/string_utils.hpp"
+#include <bsl/log.hpp>
+
+DEFINE_LOG_CATEGORY(File)
 
 std::vector<Image> GCodeFileMetadata::GetPreviews(const std::string& content) {
     static std::string_view ThumbnailBegin = "; thumbnail begin ";
@@ -53,5 +56,73 @@ GCodeFileMetadata GCodeFileMetadata::Parse(const std::string& content) {
     GCodeFileMetadata metadata;
     metadata.BytesSize = content.size();
     metadata.Previews = GetPreviews(content);
+
+    StringStream stream(content);
+
+    while (auto line_opt = stream.GetLine()) {
+        std::string_view line = line_opt.value();
+
+        try{
+            if (auto value = SubstrAfter(line, "; total layer number: "); value.size()) {
+                metadata.Layers = std::stoi(std::string(value));
+            }
+
+            if (auto value = SubstrAfter(line, "; max_z_height: "); value.size()) {
+                metadata.Height = std::stof(std::string(value));
+            }
+
+            if (auto value = SubstrAfter(line, ";TOTAL_TOOLCHANGES:"); value.size()) {
+                metadata.Toolchanges = std::stoi(std::string(value));
+            }
+
+            if (auto value = SubstrAfter(line, ";NUM_INSTANCES:"); value.size()) {
+                metadata.Objects = std::stoi(std::string(value));
+            }
+
+            if (auto value = SubstrAfter(line, "; enable_support = "); value.size()) {
+                metadata.EnableSupports = std::stoi(std::string(value));
+            }
+
+            if (auto value = SubstrAfter(line, "; nozzle_diameter = "); value.size()) {
+                metadata.NozzleDiameter = std::stof(std::string(value));
+            }
+
+            if (auto value = SubstrAfter(line, "; estimated printing time (normal mode) = "); value.size()) {
+                
+                std::int32_t print_time = 0;
+
+                std::string number;
+                
+                for (char ch : value) {
+                    if (std::isdigit(ch)) {
+                        number += ch;
+                    }
+
+                    if ((ch == 'h' || ch == 'm' || ch == 's') && number.size()) {
+                        
+                        auto units = std::stoi(number);
+
+                        if(ch == 's')
+                            print_time += units;
+                        if(ch == 'm')
+                            print_time += units * 60;
+                        if(ch == 'h')
+                            print_time += units * 60 * 60;
+
+                        LogFile(Display, "Parsed %%", units, ch);
+                        
+                        number.clear();
+                    }
+                }
+
+                metadata.EstimatedPrintTime = print_time;
+
+            }
+        }
+        catch (const std::exception &e) {
+            LogFile(Error, "MetadataParse failed: %", e.what());
+        }
+    }
+
     return metadata;
 }

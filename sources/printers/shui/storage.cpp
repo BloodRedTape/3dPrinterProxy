@@ -7,7 +7,7 @@
 #include <bsl/log.hpp>
 #include "pch/std.hpp"
 #include "core/image.hpp"
-#include "core/string_stream.hpp"
+#include "core/string_utils.hpp"
     
 #define WITH_PROFILE 1
 #include "core/perf.hpp"

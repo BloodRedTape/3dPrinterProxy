@@ -1,6 +1,7 @@
 #include "octo_print.hpp"
 #include <bsl/log.hpp>
 #include "pch/asio.hpp"
+#include "core/string_utils.hpp"
 
 OctoPrintInterface::OctoPrintInterface(std::shared_ptr<Printer> printer, std::uint16_t port):
 	m_Printer(printer)
@@ -61,20 +62,6 @@ static bool ParseMultipartFrame(std::string_view body, std::size_t start, std::s
     part = body.substr(boundary1 + boundary.size(), boundary2 - boundary1 - boundary.size());
     part_end = boundary2;
     return true;
-}
-
-static std::string_view SubstrBy(std::string_view frame, std::string_view prefix, std::string_view suffix) {
-    auto rn1 = frame.find(prefix);
-
-    if(rn1 == std::string_view::npos)
-        return {};
-
-    auto rn2 = frame.find(suffix, rn1 + prefix.size());
-
-    if(rn2 == std::string_view::npos)
-        return {};
-
-    return frame.substr(rn1 + prefix.size(), rn2 - rn1 - prefix.size());
 }
 
 static std::string_view ParseMultipartContent(std::string_view frame) {

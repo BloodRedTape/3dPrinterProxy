@@ -1,5 +1,5 @@
 #include "runtime_data.hpp"
-#include "core/string_stream.hpp"
+#include "core/string_utils.hpp"
 
 GCodeRuntimeState GCodeFileRuntimeData::GetStateNear(std::int64_t printed_byte)const {
 	if(printed_byte == 0)

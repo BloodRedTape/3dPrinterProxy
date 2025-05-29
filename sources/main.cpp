@@ -4,6 +4,9 @@
 
 int main(int argc, char* argv[])
 {
+    if (argc >= 2) {
+        std::filesystem::current_path(argv[1]);
+    }
 
     PrinterProxy proxy;
     proxy.Listen(2228);

@@ -31,3 +31,27 @@ public:
         return m_ReadPosition;
     }
 };
+
+
+inline std::string_view SubstrBy(std::string_view string, std::string_view prefix, std::string_view suffix) {
+    auto rn1 = string.find(prefix);
+
+    if(rn1 == std::string_view::npos)
+        return {};
+
+    auto rn2 = string.find(suffix, rn1 + prefix.size());
+
+    if(rn2 == std::string_view::npos)
+        return {};
+
+    return string.substr(rn1 + prefix.size(), rn2 - rn1 - prefix.size());
+}
+
+inline std::string_view SubstrAfter(std::string_view string, std::string_view prefix) {
+    auto rn1 = string.find(prefix);
+
+    if(rn1 == std::string_view::npos)
+        return {};
+
+    return string.substr(rn1 + prefix.size());
+}
