@@ -5,8 +5,8 @@
 #include <iomanip>
 #include <bsl/log.hpp>
 
-ShuiUpload::ShuiUpload(const std::string& ip, const std::string& filename, std::string&& content, bool start_printing, CompletionCallback callback): 
-    m_Socket(Async::Context()), 
+ShuiUpload::ShuiUpload(boost::asio::io_context &context, const std::string& ip, const std::string& filename, std::string&& content, bool start_printing, CompletionCallback callback): 
+    m_Socket(context), 
     m_Ip(ip), 
     m_Filename(filename), 
     m_Content(std::move(content)), 
@@ -16,8 +16,25 @@ ShuiUpload::ShuiUpload(const std::string& ip, const std::string& filename, std::
     m_Boundary = GenerateBoundary();
 }
 
-void ShuiUpload::RunAsync() {
-    Connect();
+
+void ShuiUpload::RunAsync(const std::string& ip, const std::string& filename, std::string&& content, bool start_printing, CompletionCallback callback) {
+    std::make_shared<ShuiUpload>(Async::Context(), ip, filename, std::move(content), start_printing, callback)->Connect();
+}
+
+std::variant<std::string, const std::string*> ShuiUpload::Run(const std::string& ip, const std::string& filename, std::string&& content, bool start_printing) {
+    boost::asio::io_context blocking_context;
+
+    std::variant<std::string, const std::string*> result;
+
+    auto upload = std::make_shared<ShuiUpload>(blocking_context, ip, filename, std::move(content), start_printing, [&](std::variant<std::string, const std::string*> got_result) {
+        result = std::move(got_result);
+    });
+
+    upload->Connect();
+    
+    blocking_context.run();
+
+    return result;
 }
 
 std::string ShuiUpload::GenerateBoundary() {
@@ -60,7 +77,7 @@ void ShuiUpload::Connect() {
     boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::make_address(m_Ip, ec), 80);
     if(ec) {
         if (m_Callback) {
-            m_Callback(false, "Invalid IP address: " + ec.message(), nullptr);
+            m_Callback("Invalid IP address: " + ec.message());
         }
         return;
     }
@@ -71,7 +88,7 @@ void ShuiUpload::Connect() {
 void ShuiUpload::OnConnect(boost::beast::error_code ec) {
     if(ec) {
         if (m_Callback) {
-            m_Callback(false, "Connect failed: " + ec.message(), nullptr);
+            m_Callback("Connect failed: " + ec.message());
         }
         return;
     }
@@ -84,7 +101,7 @@ void ShuiUpload::OnConnect(boost::beast::error_code ec) {
 void ShuiUpload::OnWrite(boost::beast::error_code ec, std::size_t bytes_transferred) {
     if(ec) {
         if (m_Callback) {
-            m_Callback(false, "Write failed: " + ec.message(), nullptr);
+            m_Callback("Write failed: " + ec.message());
         }
         return;
     }
@@ -95,7 +112,7 @@ void ShuiUpload::OnWrite(boost::beast::error_code ec, std::size_t bytes_transfer
 void ShuiUpload::OnRead(boost::beast::error_code ec, std::size_t bytes_transferred) {
     if(ec && ec != boost::beast::errc::not_connected) {
         if (m_Callback) {
-            m_Callback(false, "Read failed: " + ec.message(), nullptr);
+            m_Callback("Read failed: " + ec.message());
         }
         return;
     }
@@ -106,10 +123,10 @@ void ShuiUpload::OnRead(boost::beast::error_code ec, std::size_t bytes_transferr
 
     if (m_Callback) {
         if (success) {
-            m_Callback(true, "File uploaded successfully", &m_Content);
+            m_Callback(&m_Content);
         } else {
-            m_Callback(false, "Server returned error code: " + 
-                      std::to_string(static_cast<int>(m_Response.result())), nullptr);
+            m_Callback("Server returned error code: " + 
+                      std::to_string(static_cast<int>(m_Response.result())));
         }
     }
     

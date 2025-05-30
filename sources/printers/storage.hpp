@@ -8,5 +8,7 @@
 struct PrinterStorage {
 	virtual void UploadGCodeFileAsync(const std::string &filename, const std::string& content, bool print, std::function<void(bool)> callback) = 0;
 
+	virtual bool UploadGCodeFile(const std::string &filename, const std::string& content, bool print) = 0;
+
 	virtual const GCodeFileMetadata *GetMetadata(const std::string &filename)const{ return nullptr; };
 };

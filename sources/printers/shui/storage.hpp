@@ -28,6 +28,8 @@ public:
 
 	void UploadGCodeFileAsync(const std::string &filename, const std::string& content, bool print, std::function<void(bool)> callback)override;
 
+	bool UploadGCodeFile(const std::string &filename, const std::string& content, bool print)override;
+
 	//GCodeFile *GetStoredFile(const std::string &filename)const;
 
 	const GCodeFileMetadata *GetMetadata(const std::string& filename)const override;

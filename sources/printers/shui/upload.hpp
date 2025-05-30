@@ -5,7 +5,7 @@
 
 class ShuiUpload: public std::enable_shared_from_this<ShuiUpload> {
 public:
-    using CompletionCallback = std::function<void(bool success, const std::string& message, const std::string *content)>;
+    using CompletionCallback = std::function<void(std::variant<std::string, const std::string*>)>;
 
 private:
     boost::asio::ip::tcp::socket m_Socket;
@@ -20,10 +20,11 @@ private:
     boost::beast::http::response<boost::beast::http::string_body> m_Response;
 
 public:
-    ShuiUpload(const std::string& ip, const std::string& filename, std::string&& content, bool start_printing = false, CompletionCallback callback = nullptr);
+    ShuiUpload(boost::asio::io_context& context, const std::string& ip, const std::string& filename, std::string&& content, bool start_printing = false, CompletionCallback callback = nullptr);
     
-    void RunAsync();
+    static void RunAsync(const std::string& ip, const std::string& filename, std::string&& content, bool start_printing = false, CompletionCallback callback = nullptr);
 
+    static std::variant<std::string, const std::string*> Run(const std::string& ip, const std::string& filename, std::string&& content, bool start_printing = false);
 private:
     std::string GenerateBoundary();
 

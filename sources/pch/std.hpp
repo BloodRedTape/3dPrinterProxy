@@ -10,6 +10,7 @@
 #include <cassert>
 #include <vector>
 #include <filesystem>
+#include <variant>
 
 namespace std {
 	template<typename FunctionType, typename...ArgsType>

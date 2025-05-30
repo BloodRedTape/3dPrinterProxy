@@ -21,20 +21,34 @@ ShuiPrinterStorage::ShuiPrinterStorage(const std::string& ip, const std::filesys
     Load();
 }
 
+static std::string NoError = "";
+
 void ShuiPrinterStorage::UploadGCodeFileAsync(const std::string& filename, const std::string& content, bool print, std::function<void(bool)> callback) {
-    auto OnUploaded = [this, callback = std::move(callback), filename = filename](bool success, std::string result, const std::string *content) {
-        defer{
-            Println("Result %, Filename: %, 8.3: %", result, filename, std::safe(Get83Filename(filename)));
-            std::call(callback, success);
-        };
-        
-        if(success && content)
+    auto OnUploaded = [this, callback = std::move(callback), filename = filename](std::variant<std::string, const std::string *> result) {
+
+        const std::string &error = result.index() == 0 ? std::get<0>(result) : NoError;
+        const std::string *content = result.index() == 1 ? std::get<1>(result) : nullptr;
+
+        if(content)
             OnFileUploaded(filename, *content);
+
+        Println("Error [%], Filename: %, 8.3: %", error, filename, std::safe(Get83Filename(filename)));
+
+        std::call(callback, (bool)content);
     };
 
-    std::string processed_content = PreprocessGCode(content);
+    ShuiUpload::RunAsync(m_Ip, filename, PreprocessGCode(content), print, OnUploaded);
+}
 
-    std::make_shared<ShuiUpload>(m_Ip, filename, std::move(processed_content), print, OnUploaded)->RunAsync();
+bool ShuiPrinterStorage::UploadGCodeFile(const std::string& filename, const std::string& content, bool print){
+    std::variant<std::string, const std::string *> result = ShuiUpload::Run(m_Ip, filename, PreprocessGCode(content), print);
+
+    const std::string &error = result.index() == 0 ? std::get<0>(result) : NoError;
+    const std::string *uploaded_content = result.index() == 1 ? std::get<1>(result) : nullptr;
+
+    Println("Error [%], Filename: %, 8.3: %", error, filename, std::safe(Get83Filename(filename)));
+
+    return uploaded_content;
 }
 
 
