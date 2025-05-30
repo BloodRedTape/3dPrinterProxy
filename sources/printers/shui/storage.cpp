@@ -46,6 +46,9 @@ bool ShuiPrinterStorage::UploadGCodeFile(const std::string& filename, const std:
     const std::string &error = result.index() == 0 ? std::get<0>(result) : NoError;
     const std::string *uploaded_content = result.index() == 1 ? std::get<1>(result) : nullptr;
 
+    if(uploaded_content)
+        OnFileUploaded(filename, *uploaded_content);
+
     Println("Error [%], Filename: %, 8.3: %", error, filename, std::safe(Get83Filename(filename)));
 
     return uploaded_content;
