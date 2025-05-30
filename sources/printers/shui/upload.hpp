@@ -24,7 +24,7 @@ public:
     
     static void RunAsync(const std::string& ip, const std::string& filename, std::string&& content, bool start_printing = false, CompletionCallback callback = nullptr);
 
-    static std::variant<std::string, const std::string*> Run(const std::string& ip, const std::string& filename, std::string&& content, bool start_printing = false);
+    static std::optional<std::string> Run(const std::string& ip, const std::string& filename, const std::string& content, bool start_printing = false);
 private:
     std::string GenerateBoundary();
 

@@ -21,12 +21,12 @@ void ShuiUpload::RunAsync(const std::string& ip, const std::string& filename, st
     std::make_shared<ShuiUpload>(Async::Context(), ip, filename, std::move(content), start_printing, callback)->Connect();
 }
 
-std::variant<std::string, const std::string*> ShuiUpload::Run(const std::string& ip, const std::string& filename, std::string&& content, bool start_printing) {
+std::optional<std::string> ShuiUpload::Run(const std::string& ip, const std::string& filename, const std::string& content, bool start_printing) {
     boost::asio::io_context blocking_context;
 
     std::variant<std::string, const std::string*> result;
 
-    auto upload = std::make_shared<ShuiUpload>(blocking_context, ip, filename, std::move(content), start_printing, [&](std::variant<std::string, const std::string*> got_result) {
+    auto upload = std::make_shared<ShuiUpload>(blocking_context, ip, filename, std::string(content), start_printing, [&](std::variant<std::string, const std::string*> got_result) {
         result = std::move(got_result);
     });
 
@@ -34,7 +34,7 @@ std::variant<std::string, const std::string*> ShuiUpload::Run(const std::string&
     
     blocking_context.run();
 
-    return result;
+    return result.index() == 0 ? std::optional<std::string>(std::get<0>(result)) : std::nullopt;
 }
 
 std::string ShuiUpload::GenerateBoundary() {

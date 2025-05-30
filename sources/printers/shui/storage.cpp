@@ -41,17 +41,18 @@ void ShuiPrinterStorage::UploadGCodeFileAsync(const std::string& filename, const
 }
 
 bool ShuiPrinterStorage::UploadGCodeFile(const std::string& filename, const std::string& content, bool print){
-    std::variant<std::string, const std::string *> result = ShuiUpload::Run(m_Ip, filename, PreprocessGCode(content), print);
+    std::string processed_gcode = PreprocessGCode(content);
 
-    const std::string &error = result.index() == 0 ? std::get<0>(result) : NoError;
-    const std::string *uploaded_content = result.index() == 1 ? std::get<1>(result) : nullptr;
+    std::optional<std::string> result = ShuiUpload::Run(m_Ip, filename, processed_gcode, print);
 
-    if(uploaded_content)
-        OnFileUploaded(filename, *uploaded_content);
+    bool success = !result.has_value();
 
-    Println("Error [%], Filename: %, 8.3: %", error, filename, std::safe(Get83Filename(filename)));
+    if(success)
+        OnFileUploaded(filename, processed_gcode);
 
-    return uploaded_content;
+    Println("Error [%], Filename: %, 8.3: %", result.value_or(""), filename, std::safe(Get83Filename(filename)));
+
+    return success;
 }
 
 
