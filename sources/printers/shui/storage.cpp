@@ -24,13 +24,13 @@ ShuiPrinterStorage::ShuiPrinterStorage(const std::string& ip, const std::filesys
 static std::string NoError = "";
 
 void ShuiPrinterStorage::UploadGCodeFileAsync(const std::string& filename, const std::string& content, bool print, std::function<void(bool)> callback) {
+    //risky, but Shui protocol is garbage, so as is.
+    OnFileUploaded(filename, content);
+
     auto OnUploaded = [this, callback = std::move(callback), filename = filename](std::variant<std::string, const std::string *> result) {
 
         const std::string &error = result.index() == 0 ? std::get<0>(result) : NoError;
         const std::string *content = result.index() == 1 ? std::get<1>(result) : nullptr;
-
-        if(content)
-            OnFileUploaded(filename, *content);
 
         Println("Error [%], Filename: %, 8.3: %", error, filename, std::safe(Get83Filename(filename)));
 
@@ -42,17 +42,14 @@ void ShuiPrinterStorage::UploadGCodeFileAsync(const std::string& filename, const
 
 bool ShuiPrinterStorage::UploadGCodeFile(const std::string& filename, const std::string& content, bool print){
     std::string processed_gcode = PreprocessGCode(content);
+    //risky, but Shui protocol is garbage, so as is.
+    OnFileUploaded(filename, processed_gcode);
 
     std::optional<std::string> result = ShuiUpload::Run(m_Ip, filename, processed_gcode, print);
 
-    bool success = !result.has_value();
-
-    if(success)
-        OnFileUploaded(filename, processed_gcode);
-
     Println("Error [%], Filename: %, 8.3: %", result.value_or(""), filename, std::safe(Get83Filename(filename)));
 
-    return success;
+    return !result.has_value();
 }
 
 

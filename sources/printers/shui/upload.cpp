@@ -24,15 +24,22 @@ void ShuiUpload::RunAsync(const std::string& ip, const std::string& filename, st
 std::optional<std::string> ShuiUpload::Run(const std::string& ip, const std::string& filename, const std::string& content, bool start_printing) {
     boost::asio::io_context blocking_context;
 
-    std::variant<std::string, const std::string*> result;
+    std::optional<std::variant<std::string, const std::string*>> result_opt;
 
     auto upload = std::make_shared<ShuiUpload>(blocking_context, ip, filename, std::string(content), start_printing, [&](std::variant<std::string, const std::string*> got_result) {
-        result = std::move(got_result);
+        result_opt = std::move(got_result);
     });
 
     upload->Connect();
     
-    blocking_context.run();
+    //Limit file upload to one minute to fix freezes on error
+    static constexpr const auto FileUploadMaxTimeLimit = std::chrono::seconds(60);
+    blocking_context.run_for(FileUploadMaxTimeLimit);
+
+    if(!result_opt.has_value())
+        return "Hard Timeout";
+
+    const auto &result = result_opt.value();
 
     return result.index() == 0 ? std::optional<std::string>(std::get<0>(result)) : std::nullopt;
 }
