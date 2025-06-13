@@ -7,3 +7,12 @@
 [submodule "libs/base64"]
 	path = libs/base64
 	url = https://github.com/aklomp/base64.git
+[submodule "libs/miniz"]
+	path = libs/miniz
+	url = https://github.com/richgel999/miniz
+[submodule "libs/SimpleTgUtils"]
+	path = libs/SimpleTgUtils
+	url = https://github.com/bloodredtape/SimpleTgUtils
+[submodule "libs/tgbot-cpp"]
+	path = libs/tgbot-cpp
+	url = https://github.com/reo7sp/tgbot-cpp.git

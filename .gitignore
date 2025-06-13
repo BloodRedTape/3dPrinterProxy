@@ -8,4 +8,6 @@ out
 .cache
 .clangd
 
+sources/config.cpp
+
 run_tree

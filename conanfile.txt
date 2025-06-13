@@ -1,5 +1,5 @@
 [requires]
-boost/1.84.0
+boost/1.83.0
 openssl/3.2.1
 beauty/1.0.3
 stb/cci.20240531

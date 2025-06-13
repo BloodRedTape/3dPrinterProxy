@@ -7,12 +7,18 @@ project(3dPrinterProxy)
 find_package(beauty REQUIRED)
 find_package(Boost REQUIRED)
 find_package(stb REQUIRED)
+find_package(OpenSSL REQUIRED)
+set(BSL_WITH_EXTERNAL_LOG_FUNCTION ON)
 add_subdirectory(libs/bsl)
 add_subdirectory(libs/json)
 add_subdirectory(libs/base64)
+add_subdirectory(libs/tgbot-cpp)
+add_subdirectory(libs/miniz)
+add_subdirectory(libs/SimpleTgUtils)
 
 add_executable(3dPrinterProxy
 	"./sources/main.cpp"
+	"./sources/config.cpp"
 	"./sources/printer_proxy.cpp"
 	"./sources/printers/shui/printer.cpp"
 	"./sources/printers/shui/gcode.cpp" 
@@ -32,9 +38,12 @@ target_link_libraries(3dPrinterProxy
 	PUBLIC bsl
 	PUBLIC beauty::beauty 
 	PUBLIC boost::boost 
+	PUBLIC openssl::openssl 
 	PUBLIC nlohmann_json::nlohmann_json
 	PUBLIC stb::stb
 	PUBLIC base64
+	PUBLIC TgBot
+	PUBLIC SimpleTgUtils
 )
 
 target_precompile_headers(3dPrinterProxy PRIVATE 
