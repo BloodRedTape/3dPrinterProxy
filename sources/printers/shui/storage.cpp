@@ -308,33 +308,6 @@ void ShuiPrinterStorage::Save(const GCodeFileEntry& entry, const std::string& _8
 }
 
 void ShuiPrinterStorage::Load() {
-    //migration
-    for (auto dir_entry : std::filesystem::directory_iterator(m_OldPath)) {
-        if(!dir_entry.is_directory())
-            continue;
-
-        std::string _83 = dir_entry.path().filename().string();
-
-        auto entry = GCodeFileEntry::LoadFromFile(dir_entry.path() / "entry.json");
-
-        if(!entry.has_value())
-            continue;
-
-        for (const auto& [hash, data] : entry->Metadata) {
-            File::WriteEntire(m_MetadataPath / std::to_string(hash), nlohmann::json(data).dump());
-        }
-        
-        m_83ToFile.emplace(_83, std::move(entry.value()));
-    }
-
-    for (const auto& [_83, file] : m_83ToFile) {
-        Save(file, _83);
-
-        std::filesystem::remove(m_OldPath / _83 / "entry.json");
-        std::filesystem::remove(m_OldPath / _83);
-    }
-
-    //new 
     for (auto file_entry: std::filesystem::directory_iterator(m_FilesPath)) {
         if(!file_entry.is_regular_file())
             continue;

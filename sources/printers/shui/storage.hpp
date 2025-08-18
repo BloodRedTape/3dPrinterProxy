@@ -9,9 +9,7 @@ struct GCodeFileEntry {
 	std::size_t ContentHash;
 	GCodeFileRuntimeData RuntimeData;
 
-	std::unordered_map<std::size_t, GCodeFileMetadata> Metadata;
-
-	NLOHMANN_DEFINE_TYPE_INTRUSIVE_WITH_DEFAULT(GCodeFileEntry, LongFilename, ContentHash, RuntimeData, Metadata);
+	NLOHMANN_DEFINE_TYPE_INTRUSIVE_WITH_DEFAULT(GCodeFileEntry, LongFilename, ContentHash, RuntimeData);
 
 	static std::optional<GCodeFileEntry> LoadFromFile(std::filesystem::path filepath);
 
