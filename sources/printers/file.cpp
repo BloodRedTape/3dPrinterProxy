@@ -1,6 +1,7 @@
 #include "file.hpp"
 #include "core/string_utils.hpp"
 #include <bsl/log.hpp>
+#include <bsl/file.hpp>
 
 DEFINE_LOG_CATEGORY(File)
 
@@ -52,7 +53,7 @@ std::vector<Image> GCodeFileMetadata::GetPreviews(const std::string& content) {
     return previews;
 }
 
-GCodeFileMetadata GCodeFileMetadata::Parse(const std::string& content) {
+GCodeFileMetadata GCodeFileMetadata::ParseFromGCode(const std::string& content) {
     GCodeFileMetadata metadata;
     metadata.BytesSize = content.size();
     metadata.Previews = GetPreviews(content);
@@ -123,4 +124,14 @@ GCodeFileMetadata GCodeFileMetadata::Parse(const std::string& content) {
     }
 
     return metadata;
+}
+
+std::optional<GCodeFileMetadata> GCodeFileMetadata::ParseFromJsonFile(const std::filesystem::path& filepath){
+    try{
+        GCodeFileMetadata data = nlohmann::json::parse(File::ReadEntire(filepath), nullptr, false, false);
+        
+        return data;
+    }catch (...) {
+        return std::nullopt;
+    }
 }

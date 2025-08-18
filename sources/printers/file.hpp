@@ -45,6 +45,8 @@ struct GCodeFileMetadata {
 
 	static std::vector<Image> GetPreviews(const std::string& content);
 
-	static GCodeFileMetadata Parse(const std::string &content);
+	static GCodeFileMetadata ParseFromGCode(const std::string &content);
+
+	static std::optional<GCodeFileMetadata> ParseFromJsonFile(const std::filesystem::path& filepath);
 };
 

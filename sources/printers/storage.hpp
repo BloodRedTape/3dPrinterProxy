@@ -11,4 +11,8 @@ struct PrinterStorage {
 	virtual bool UploadGCodeFile(const std::string &filename, const std::string& content, bool print) = 0;
 
 	virtual const GCodeFileMetadata *GetMetadata(const std::string &filename)const{ return nullptr; };
+
+	virtual const GCodeFileMetadata *GetMetadata(std::size_t content_hash)const{ return nullptr; };
+
+	virtual std::optional<std::size_t> GetContentHashForFilename(const std::string &filename)const{ return std::nullopt; };
 };

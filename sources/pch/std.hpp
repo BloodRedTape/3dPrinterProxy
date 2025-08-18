@@ -11,6 +11,7 @@
 #include <vector>
 #include <filesystem>
 #include <variant>
+#include <sstream>
 
 namespace std {
 	template<typename FunctionType, typename...ArgsType>

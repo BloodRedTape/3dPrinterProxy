@@ -16,8 +16,13 @@ DEFINE_LOG_CATEGORY(ShuiStorage)
 
 ShuiPrinterStorage::ShuiPrinterStorage(const std::string& ip, const std::filesystem::path &data_path):
     m_Ip(ip),
-    m_DataPath(data_path)
+    m_OldPath(data_path),
+    m_FilesPath(data_path / "files"),
+    m_MetadataPath(data_path / "metadata")
 {
+    std::filesystem::create_directories(m_FilesPath);
+    std::filesystem::create_directories(m_MetadataPath);
+
     Load();
 }
 
@@ -59,21 +64,37 @@ bool ShuiPrinterStorage::UploadGCodeFile(const std::string& filename, const std:
 }
 
 
+const GCodeFileMetadata* ShuiPrinterStorage::GetMetadata(std::size_t content_hash) const{
+    if(!m_ContentHashToMetadata.count(content_hash))
+        return nullptr;
+
+    return &m_ContentHashToMetadata.at(content_hash);
+}
+
 const GCodeFileMetadata* ShuiPrinterStorage::GetMetadata(const std::string& long_filename)const {
-    const std::string *_83 = Get83Filename(long_filename);
+    auto hash = GetContentHashForFilename(long_filename);
+
+    if(!hash)
+        return nullptr;
+    
+    return GetMetadata(*hash);
+}
+
+std::optional<std::size_t> ShuiPrinterStorage::GetContentHashFor83Filename(const std::string& _83_filename) const{
+    if(!m_83ToFile.count(_83_filename))
+        return std::nullopt;
+    const auto &file = m_83ToFile.at(_83_filename);
+
+    return file.ContentHash;
+}
+
+std::optional<std::size_t> ShuiPrinterStorage::GetContentHashForFilename(const std::string& filename) const{
+    const std::string *_83 = Get83Filename(filename);
 
     if(!_83)
-        return nullptr;
+        return std::nullopt;
     
-    if(!m_83ToFile.count(*_83))
-        return nullptr;
-
-    const GCodeFileEntry& file = m_83ToFile.at(*_83);
-    
-    if(!file.Metadata.count(file.ContentHash))
-        return nullptr;
-
-    return &file.Metadata.at(file.ContentHash);
+    return GetContentHashFor83Filename(*_83);
 }
 
 std::string ShuiPrinterStorage::PreprocessGCode(const std::string &content) {
@@ -251,7 +272,10 @@ bool ShuiPrinterStorage::OnFileUploaded(const std::string& filename, const std::
         entry.RuntimeData = GCodeFileRuntimeData::Parse(content);
     }
     
-    entry.Metadata.emplace(entry.ContentHash, GCodeFileMetadata::Parse(content));
+    {
+        PROFILE_SCOPE(ShuiPrinterStorage, OnFileUploaded_ParseFileMetadata);
+        m_ContentHashToMetadata[entry.ContentHash] = GCodeFileMetadata::ParseFromGCode(content);
+    }
 
     {
         PROFILE_SCOPE(ShuiPrinterStorage, OnFileUploaded_SaveToFile);
@@ -261,10 +285,9 @@ bool ShuiPrinterStorage::OnFileUploaded(const std::string& filename, const std::
     return true;
 }
 
-std::optional<GCodeFileEntry> GCodeFileEntry::LoadFromDir(std::filesystem::path directory) {
-    
+std::optional<GCodeFileEntry> GCodeFileEntry::LoadFromFile(std::filesystem::path filepath) {
     try{
-        GCodeFileEntry entry = nlohmann::json::parse(ReadEntireFile((directory / "entry.json").string()), nullptr, false, false);
+        GCodeFileEntry entry = nlohmann::json::parse(File::ReadEntire(filepath), nullptr, false, false);
         
         return entry;
     }catch (...) {
@@ -272,30 +295,75 @@ std::optional<GCodeFileEntry> GCodeFileEntry::LoadFromDir(std::filesystem::path 
     }
 }
 
-void GCodeFileEntry::SaveToDir(const std::filesystem::path& directory)const{
-    WriteEntireFile((directory / "entry.json").string(), nlohmann::json(*this).dump());
+void GCodeFileEntry::SaveToFile(const std::filesystem::path& filepath)const{
+    File::WriteEntire(filepath, nlohmann::json(*this).dump());
 }
 
 void ShuiPrinterStorage::Save(const GCodeFileEntry& entry, const std::string& _83)const {
-    auto entry_path = m_DataPath / _83;
-    std::filesystem::create_directories(entry_path);
+    auto entry_path = m_FilesPath / _83;
+
+    std::filesystem::create_directories(m_FilesPath);
     
-    entry.SaveToDir(entry_path);
+    entry.SaveToFile(entry_path);
 }
 
 void ShuiPrinterStorage::Load() {
-    for (auto dir_entry : std::filesystem::directory_iterator(m_DataPath)) {
+    //migration
+    for (auto dir_entry : std::filesystem::directory_iterator(m_OldPath)) {
         if(!dir_entry.is_directory())
             continue;
 
         std::string _83 = dir_entry.path().filename().string();
 
-        auto entry = GCodeFileEntry::LoadFromDir(dir_entry.path());
+        auto entry = GCodeFileEntry::LoadFromFile(dir_entry.path() / "entry.json");
+
+        if(!entry.has_value())
+            continue;
+
+        for (const auto& [hash, data] : entry->Metadata) {
+            File::WriteEntire(m_MetadataPath / std::to_string(hash), nlohmann::json(data).dump());
+        }
+        
+        m_83ToFile.emplace(_83, std::move(entry.value()));
+    }
+
+    for (const auto& [_83, file] : m_83ToFile) {
+        Save(file, _83);
+
+        std::filesystem::remove(m_OldPath / _83 / "entry.json");
+        std::filesystem::remove(m_OldPath / _83);
+    }
+
+    //new 
+    for (auto file_entry: std::filesystem::directory_iterator(m_FilesPath)) {
+        if(!file_entry.is_regular_file())
+            continue;
+
+        std::string _83 = file_entry.path().filename().string();
+
+        auto entry = GCodeFileEntry::LoadFromFile(file_entry.path());
 
         if(!entry.has_value())
             continue;
         
         m_83ToFile.emplace(_83, std::move(entry.value()));
+    }
+
+    for (auto file_entry: std::filesystem::directory_iterator(m_MetadataPath)) {
+        if(!file_entry.is_regular_file())
+            continue;
+
+        auto hash = FromString<std::size_t>(file_entry.path().filename().string());
+
+        if(!hash.has_value())
+            continue;
+
+        auto data = GCodeFileMetadata::ParseFromJsonFile(file_entry.path());
+
+        if(!data.has_value())
+            continue;
+        
+        m_ContentHashToMetadata.emplace(hash.value(), std::move(data.value()));
     }
 }
 

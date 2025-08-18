@@ -3,6 +3,7 @@
 #include <bsl/enum.hpp>
 #include "pch/std.hpp"
 #include "storage.hpp"
+#include "history.hpp"
 #include "printers/state.hpp"
 
 BSL_ENUM(GCodeResult,

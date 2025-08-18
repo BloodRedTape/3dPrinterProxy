@@ -6,23 +6,27 @@
 
 struct GCodeFileEntry {
 	std::string LongFilename;
-	GCodeFileRuntimeData RuntimeData;
 	std::size_t ContentHash;
+	GCodeFileRuntimeData RuntimeData;
 
 	std::unordered_map<std::size_t, GCodeFileMetadata> Metadata;
 
-	NLOHMANN_DEFINE_TYPE_INTRUSIVE_WITH_DEFAULT(GCodeFileEntry, LongFilename, RuntimeData, ContentHash, Metadata);
+	NLOHMANN_DEFINE_TYPE_INTRUSIVE_WITH_DEFAULT(GCodeFileEntry, LongFilename, ContentHash, RuntimeData, Metadata);
 
-	static std::optional<GCodeFileEntry> LoadFromDir(std::filesystem::path directory);
+	static std::optional<GCodeFileEntry> LoadFromFile(std::filesystem::path filepath);
 
-	void SaveToDir(const std::filesystem::path &directory)const;
+	void SaveToFile(const std::filesystem::path &filepath)const;
 };
 
 class ShuiPrinterStorage: public PrinterStorage{
 	std::string m_Ip;
-	std::filesystem::path m_DataPath;
+	std::filesystem::path m_OldPath;
+	std::filesystem::path m_FilesPath;
+	std::filesystem::path m_MetadataPath;
 	
 	std::unordered_map<std::string, GCodeFileEntry> m_83ToFile;
+
+	std::unordered_map<std::size_t, GCodeFileMetadata> m_ContentHashToMetadata;
 public:
 	ShuiPrinterStorage(const std::string& ip, const std::filesystem::path &data_path);
 
@@ -32,7 +36,13 @@ public:
 
 	//GCodeFile *GetStoredFile(const std::string &filename)const;
 
+	const GCodeFileMetadata *GetMetadata(std::size_t content_hash)const override;
+
 	const GCodeFileMetadata *GetMetadata(const std::string& filename)const override;
+
+	std::optional<std::size_t> GetContentHashForFilename(const std::string &filename)const override;
+
+	std::optional<std::size_t> GetContentHashFor83Filename(const std::string &_83_filename)const;
 
 	//std::vector<std::string> GetStoredFiles()const;
 

@@ -55,3 +55,22 @@ inline std::string_view SubstrAfter(std::string_view string, std::string_view pr
 
     return string.substr(rn1 + prefix.size());
 }
+
+template<typename T>
+std::optional<T> FromString(const std::string& string) {
+    std::stringstream sstream(string);
+    T result = {};
+    sstream >> result;
+
+    if (sstream.fail()) {
+        return std::nullopt;
+    }
+
+    std::string remainder;
+    sstream >> remainder;
+    if (!remainder.empty()) {
+        return std::nullopt;
+    }
+    
+    return result;
+}
