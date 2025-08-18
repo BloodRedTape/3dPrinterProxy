@@ -58,6 +58,10 @@ public:
 
 	void OnConnectionTimeout(std::int64_t timeout);
 
+	void OnConnectFailed(std::int64_t times);
+
+	void OnConnectionLost();
+
 	void OnConnectionPrinterLine(const std::string &line, std::int64_t index);
 
 	void SubmitReportSequenceAsync();

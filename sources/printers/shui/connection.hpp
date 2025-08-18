@@ -18,6 +18,7 @@ private:
 	std::string m_TempBuffer;
 
 	std::int64_t m_Timeouts = 0;
+	std::int64_t m_FailedConnections = 0;
 	std::int64_t m_Lines = 0;
 
 	GCodeExecutionEngine m_GCodeEngine;
@@ -27,6 +28,7 @@ public:
 
 	std::function<void()> OnTick;
 	std::function<void(std::int64_t)> OnTimeout;
+	std::function<void(std::int64_t)> OnFailedConnect;
 	std::function<void()> OnConnect;
 	
 public:

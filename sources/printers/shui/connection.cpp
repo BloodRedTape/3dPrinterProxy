@@ -68,14 +68,31 @@ void ShuiPrinterConnection::Connect() {
 
 
 void ShuiPrinterConnection::HandleConnect(const boost::system::error_code& error) {
-	if(error == boost::system::errc::operation_canceled || error == boost::system::errc::host_unreachable)
+	auto OnFailure = [this](){
+		m_FailedConnections++;
+
+		std::call(OnFailedConnect, m_FailedConnections);
+	};
+
+	if(error == boost::system::errc::operation_canceled)
 		return;
 
+	if(error == boost::system::errc::host_unreachable){
+		OnFailure();
+		return;
+	}
+
 	if (error) {
+		OnFailure();
+
 		LogShuiConnection(Error, "OnConnect: %", error.what());
+
 		Connect();
 	} else {
+		m_FailedConnections = 0;
+
 		std::call(OnConnect);
+
 		Read();
 	}
 }

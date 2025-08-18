@@ -22,6 +22,7 @@ ShuiPrinter::ShuiPrinter(std::string ip, std::uint16_t port, const std::filesyst
 	m_Connection->OnConnect = std::bind(&ShuiPrinter::OnConnectionConnect, this);
 	m_Connection->OnTick = std::bind(&ShuiPrinter::OnConnectionTick, this);
 	m_Connection->OnTimeout = std::bind(&ShuiPrinter::OnConnectionTimeout, this, std::placeholders::_1);
+	m_Connection->OnFailedConnect = std::bind(&ShuiPrinter::OnConnectFailed, this, std::placeholders::_1);
 	m_Connection->OnPrinterLine = std::bind(&ShuiPrinter::OnConnectionPrinterLine, this, std::placeholders::_1, std::placeholders::_2);
 }
 
@@ -164,13 +165,29 @@ void ShuiPrinter::OnConnectionTimeout(std::int64_t timeout) {
     LogShui(Display, "\tTimeout");
 #endif
 
-	if(timeout >= 4 && m_State.has_value()){
-		m_State = std::nullopt;
-		
-		std::call(OnStateChanged);
-
-        m_Connection->CancelAllGCode();
+	if(timeout >= 4){
+        OnConnectionLost();
 	}
+}
+
+void ShuiPrinter::OnConnectFailed(std::int64_t times){
+#if SHUI_VERBOSE_LOGGING
+    LogShui(Display, "\tConnect Failed");
+#endif
+	if(times >= 6){
+        OnConnectionLost();
+	}
+}
+
+void ShuiPrinter::OnConnectionLost(){
+    if(!m_State.has_value())
+        return;
+
+	m_State = std::nullopt;
+		
+	std::call(OnStateChanged);
+
+    m_Connection->CancelAllGCode();
 }
 
 void ShuiPrinter::OnConnectionPrinterLine(const std::string& line, std::int64_t index) {
