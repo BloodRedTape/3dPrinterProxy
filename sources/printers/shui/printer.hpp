@@ -4,6 +4,7 @@
 #include "printers/state.hpp"
 #include "printers/shui/connection.hpp"
 #include "printers/shui/storage.hpp"
+#include "printers/shui/history.hpp"
 #include "printers/printer.hpp"
 
 namespace boost::asio { class io_context; }
@@ -18,11 +19,14 @@ class ShuiPrinter: public Printer {
 	std::unique_ptr<ShuiPrinterConnection> m_Connection;
 	
 	ShuiPrinterStorage m_Storage;
+	ShuiPrinterHistory m_History;
 public:
 	
 	ShuiPrinter(std::string ip, std::uint16_t port, const std::filesystem::path &data_path);
 
 	void RunAsync()override;
+
+	void HandleStateChanged();
 
 	void IdentifyAsync(GCodeCallback callback)override;
 
@@ -49,6 +53,8 @@ public:
 	void CancelPrintAsync(GCodeCallback callback)override;
 	
 	PrinterStorage &Storage()override;
+
+	const PrinterHistory &History()const override;
 
 	bool IsConnected()const override;
 

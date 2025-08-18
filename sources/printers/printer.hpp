@@ -51,5 +51,7 @@ public:
 
 	virtual PrinterStorage &Storage() = 0;
 
+	virtual const PrinterHistory &History()const = 0;
+
 	virtual std::optional<PrinterState> GetPrinterState()const = 0;
 };

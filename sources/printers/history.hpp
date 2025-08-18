@@ -1,16 +1,20 @@
 #pragma once
 
-#include <string>
+#include "pch/std.hpp"
+#include "pch/json.hpp"
 
-using DateTime = std::int64_t;
+using UnixTime = std::uint64_t;
 
 struct HistoryEntry {
-	std::size_t Hash;
-	DateTime PrintStart;
-	DateTime PrintEnd;
+	std::string Filename;
+	std::size_t ContentHash = 0;
+	UnixTime PrintStart = 0;
+	UnixTime PrintEnd = 0;
+
+	NLOHMANN_DEFINE_TYPE_INTRUSIVE_WITH_DEFAULT(HistoryEntry, Filename, ContentHash, PrintStart, PrintEnd)
 };
 
 class PrinterHistory {
-	
+public:
 	virtual const std::vector<HistoryEntry> &GetHistory()const = 0;
 };

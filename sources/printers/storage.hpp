@@ -2,6 +2,7 @@
 
 #include "pch/std.hpp"
 #include "printers/file.hpp"
+#include "printers/history.hpp"
 
 #define WITH_PRINTER_DEBUG 0
 

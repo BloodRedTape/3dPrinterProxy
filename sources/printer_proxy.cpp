@@ -14,6 +14,10 @@ PrinterProxy::PrinterProxy(){
 		.get(std::bind(&PrinterProxy::GetPreview, this, std::placeholders::_1, std::placeholders::_2));
     m_Server.add_route("/api/v1/printers/:id/files/:filename/metadata")
 		.get(std::bind(&PrinterProxy::GetMetadata, this, std::placeholders::_1, std::placeholders::_2));
+
+    m_Server.add_route("/api/v1/printers/:id/history")
+		.get(std::bind(&PrinterProxy::GetHistory, this, std::placeholders::_1, std::placeholders::_2));
+
 	{
 		auto id = "ttb_1";
 		auto printer = std::make_shared<ShuiPrinter>("192.168.1.179", 8080, Format("./printers/%", id));
@@ -95,6 +99,19 @@ void PrinterProxy::GetMetadata(const beauty::request& req, beauty::response& res
 		throw beauty::http_error::client::not_found();
 
 	resp.body() = nlohmann::json(*metadata).dump();
+	resp.set(beauty::content_type::application_json);
+}
+
+void PrinterProxy::GetHistory(const beauty::request& req, beauty::response& resp){
+	auto id = req.a("id").as_string();
+
+	if(!m_Printers.count(id))
+		throw beauty::http_error::client::not_found();
+	
+	auto printer = m_Printers.at(id);
+	auto history = printer->History().GetHistory();
+
+	resp.body() = nlohmann::json(history).dump();
 	resp.set(beauty::content_type::application_json);
 }
 

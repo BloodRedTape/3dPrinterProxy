@@ -32,7 +32,7 @@ add_executable(3dPrinterProxy
 	"./sources/core/image.cpp" 
 	"./sources/core/base64.cpp" 
 	"./sources/printers/file.cpp" 
-)
+ "sources/printers/shui/history.cpp")
 
 target_link_libraries(3dPrinterProxy 
 	PUBLIC bsl
