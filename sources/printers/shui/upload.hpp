@@ -16,9 +16,11 @@ private:
     std::string m_Boundary;
     CompletionCallback m_Callback;
     boost::beast::http::request<boost::beast::http::string_body> m_Request;
+    std::string m_SerializedRequest;
+    std::size_t m_BytesWritten = 0;
     boost::beast::flat_buffer m_Buffer;
     boost::beast::http::response<boost::beast::http::string_body> m_Response;
-
+    
 public:
     ShuiUpload(boost::asio::io_context& context, const std::string& ip, const std::string& filename, std::string&& content, bool start_printing = false, CompletionCallback callback = nullptr);
     
@@ -33,6 +35,8 @@ private:
     void Connect();
 
     void OnConnect(boost::beast::error_code ec);
+
+    void WriteNextChunk();
 
     void OnWrite(boost::beast::error_code ec, std::size_t bytes_transferred);
 

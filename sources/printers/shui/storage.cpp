@@ -49,6 +49,9 @@ bool ShuiPrinterStorage::UploadGCodeFile(const std::string& filename, const std:
 
     if(success)
         OnFileUploaded(filename, processed_gcode);
+    
+    if(result.has_value())
+        LogShuiStorage(Error, "UploadGCode exited with error '%'", result.value());
 
     Println("Error [%], Filename: %, 8.3: %", result.value_or(""), filename, std::safe(Get83Filename(filename)));
 

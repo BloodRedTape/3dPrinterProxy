@@ -2,3 +2,4 @@
 #include <beauty/exception.hpp>
 #include <beauty/session.hpp>
 #include <boost/beast/http.hpp>
+#include <boost/beast/core/buffers_prefix.hpp>

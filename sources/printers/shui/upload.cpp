@@ -33,7 +33,7 @@ std::optional<std::string> ShuiUpload::Run(const std::string& ip, const std::str
     upload->Connect();
     
     //Limit file upload to one minute to fix freezes on error
-    static constexpr const auto FileUploadMaxTimeLimit = std::chrono::seconds(60);
+    static constexpr const auto FileUploadMaxTimeLimit = std::chrono::seconds(120);
     blocking_context.run_for(FileUploadMaxTimeLimit);
 
     if(!result_opt.has_value())
@@ -101,8 +101,38 @@ void ShuiUpload::OnConnect(boost::beast::error_code ec) {
     }
     
     m_Request = CreateMultipartRequest();
+
+    std::ostringstream ss;
+    ss << m_Request;
+    m_SerializedRequest = ss.str();
     
-    boost::beast::http::async_write(m_Socket, m_Request, boost::beast::bind_front_handler(&ShuiUpload::OnWrite, shared_from_this()));
+    m_BytesWritten = 0;
+    WriteNextChunk();    
+}
+
+void ShuiUpload::WriteNextChunk() {
+    static constexpr std::size_t CHUNK_SIZE = 8 * 1024; // 8KB
+    
+    if (m_BytesWritten >= m_SerializedRequest.size()) {
+        OnWrite(boost::beast::error_code{}, m_BytesWritten);
+        return;
+    }
+    
+    std::size_t remaining = m_SerializedRequest.size() - m_BytesWritten;
+    std::size_t to_write = std::min(CHUNK_SIZE, remaining);
+    
+    auto buffer = boost::asio::buffer(m_SerializedRequest.data() + m_BytesWritten, to_write);
+    
+    boost::asio::async_write(m_Socket, buffer,
+        [this, self = shared_from_this()](boost::beast::error_code ec, std::size_t bytes) {
+            if (ec) {
+                OnWrite(ec, m_BytesWritten);
+                return;
+            }
+            
+            m_BytesWritten += bytes;
+            WriteNextChunk();
+        });
 }
 
 void ShuiUpload::OnWrite(boost::beast::error_code ec, std::size_t bytes_transferred) {
