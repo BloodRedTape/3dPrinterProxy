@@ -13,6 +13,7 @@ add_subdirectory(libs/json)
 add_subdirectory(libs/base64)
 add_subdirectory(libs/tgbot-cpp)
 add_subdirectory(libs/miniz)
+set(BEAUTY_BUILD_EXAMPLES OFF)
 add_subdirectory(libs/beauty)
 add_subdirectory(libs/SimpleTgUtils)
 
