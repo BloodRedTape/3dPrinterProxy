@@ -3,6 +3,7 @@ cmake_policy(SET CMP0091 NEW)
 
 project(3dPrinterProxy)
 
+set(BUILD_TESTING OFF)
 
 find_package(Boost REQUIRED)
 find_package(stb REQUIRED)
