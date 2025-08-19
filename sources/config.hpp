@@ -8,4 +8,6 @@ struct Config {
 	static std::string LogToken;
 	static std::string DebugBotName;
 	static bool LogIsEnabled;
+
+	static std::string FrontentPath;
 };

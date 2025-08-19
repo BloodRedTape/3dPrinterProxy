@@ -4,7 +4,6 @@ cmake_policy(SET CMP0091 NEW)
 project(3dPrinterProxy)
 
 
-find_package(beauty REQUIRED)
 find_package(Boost REQUIRED)
 find_package(stb REQUIRED)
 find_package(OpenSSL REQUIRED)
@@ -14,6 +13,7 @@ add_subdirectory(libs/json)
 add_subdirectory(libs/base64)
 add_subdirectory(libs/tgbot-cpp)
 add_subdirectory(libs/miniz)
+add_subdirectory(libs/beauty)
 add_subdirectory(libs/SimpleTgUtils)
 
 add_executable(3dPrinterProxy

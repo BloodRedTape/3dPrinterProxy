@@ -5,6 +5,7 @@
 #include <filesystem>
 #include "upload.hpp"
 #include <bsl/log.hpp>
+#include <bsl/parse.hpp>
 #include "pch/std.hpp"
 #include "core/image.hpp"
 #include "core/string_utils.hpp"

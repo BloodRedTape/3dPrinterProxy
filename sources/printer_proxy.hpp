@@ -51,6 +51,8 @@ public:
 
     void RunAsync();
 
+    void GetFrontendFile(const beauty::request &req, beauty::response &resp);
+
     void GetInfo(const beauty::request &req, beauty::response &resp);
 
     void GetPrinters(const beauty::request &req, beauty::response &resp);
@@ -60,6 +62,8 @@ public:
     void GetMetadata(const beauty::request &req, beauty::response &resp);
 
     void GetHistory(const beauty::request &req, beauty::response &resp);
+
+    void GetFrontend(const beauty::request &req, beauty::response &resp);
 
     void OnSet(const std::string &id, const nlohmann::json& content);
 

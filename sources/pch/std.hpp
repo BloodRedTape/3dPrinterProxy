@@ -41,4 +41,10 @@ namespace std {
 
 		return std::make_optional(result);
 	}
+
+	inline std::string_view remove_all_front(std::string_view string, char ch) {
+		while(string.size() && string.front() == ch)
+			string = string.substr(1);
+		return string;
+	}
 }

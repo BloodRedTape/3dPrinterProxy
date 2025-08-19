@@ -1,10 +1,16 @@
 #include "printer_proxy.hpp"
 #include "printers/shui/printer.hpp"
+#include "pch/std.hpp"
 #include <bsl/log.hpp>
+#include <bsl/file.hpp>
+#include "config.hpp"
 
 DEFINE_LOG_CATEGORY(Proxy);
 
 PrinterProxy::PrinterProxy(){
+    m_Server.add_route("/**")
+		.get(std::bind(&PrinterProxy::GetFrontendFile, this, std::placeholders::_1, std::placeholders::_2));
+
     m_Server.add_route("/api/v1/info")
 		.get(std::bind(&PrinterProxy::GetInfo, this, std::placeholders::_1, std::placeholders::_2));
     m_Server.add_route("/api/v1/printers")
@@ -17,6 +23,9 @@ PrinterProxy::PrinterProxy(){
 
     m_Server.add_route("/api/v1/printers/:id/history")
 		.get(std::bind(&PrinterProxy::GetHistory, this, std::placeholders::_1, std::placeholders::_2));
+
+    m_Server.add_route("/api/v1/printers/:id/frontend")
+		.get(std::bind(&PrinterProxy::GetFrontend, this, std::placeholders::_1, std::placeholders::_2));
 
 	{
 		auto id = "ttb_1";
@@ -53,6 +62,37 @@ void PrinterProxy::RunAsync() {
 		};
 	}
 
+}
+
+void PrinterProxy::GetFrontendFile(const beauty::request& req, beauty::response& resp) {
+    std::string_view full_target = req.target();
+
+	std::string_view path = full_target;
+	size_t pos = path.find('?');
+	if (pos != std::string_view::npos) {
+		path = path.substr(0, pos);
+	}
+
+	auto file = std::remove_all_front(path, '/');
+
+	if(!file.size())
+		file = "index.html";
+
+	std::filesystem::path filepath = std::filesystem::path(Config::FrontentPath) / file;
+
+	if(!std::filesystem::exists(filepath))
+		throw beauty::http_error::client::not_found();
+
+	beauty::header::content_type content_type("application/octet-stream");
+
+	auto ext = filepath.extension().string();
+
+	if (beauty::content_type::types.count(ext)) {
+		content_type = beauty::content_type::types.at(ext);
+	}
+	
+	resp.body() = File::ReadEntire(filepath);
+	resp.set(content_type);
 }
 
 void PrinterProxy::GetInfo(const beauty::request& req, beauty::response& resp){
@@ -113,6 +153,14 @@ void PrinterProxy::GetHistory(const beauty::request& req, beauty::response& resp
 
 	resp.body() = nlohmann::json(history).dump();
 	resp.set(beauty::content_type::application_json);
+}
+
+void PrinterProxy::GetFrontend(const beauty::request& req, beauty::response& resp) {
+	std::string ui_host = "http://127.0.0.1:2228";
+
+	resp.result(beauty::http::status::found);
+    resp.set(beauty::http::field::server, "Boost.Beast Redirect Example");
+    resp.set(beauty::http::field::location, ui_host);
 }
 
 void PrinterProxy::OnSet(const std::string& id, const nlohmann::json& content) {

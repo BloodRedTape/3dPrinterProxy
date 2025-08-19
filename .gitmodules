@@ -16,3 +16,6 @@
 [submodule "libs/tgbot-cpp"]
 	path = libs/tgbot-cpp
 	url = https://github.com/reo7sp/tgbot-cpp.git
+[submodule "libs/beauty"]
+	path = libs/beauty
+	url = https://github.com/BloodRedTape/beauty

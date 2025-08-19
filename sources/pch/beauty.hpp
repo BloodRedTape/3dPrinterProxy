@@ -3,3 +3,4 @@
 #include <beauty/session.hpp>
 #include <boost/beast/http.hpp>
 #include <boost/beast/core/buffers_prefix.hpp>
+#include <boost/url.hpp>
