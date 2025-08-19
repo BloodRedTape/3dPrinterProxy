@@ -25,6 +25,9 @@ ShuiPrinter::ShuiPrinter(std::string ip, std::uint16_t port, const std::filesyst
 	m_Connection->OnTimeout = std::bind(&ShuiPrinter::OnConnectionTimeout, this, std::placeholders::_1);
 	m_Connection->OnFailedConnect = std::bind(&ShuiPrinter::OnConnectFailed, this, std::placeholders::_1);
 	m_Connection->OnPrinterLine = std::bind(&ShuiPrinter::OnConnectionPrinterLine, this, std::placeholders::_1, std::placeholders::_2);
+
+    Manufacturer = "Two Trees";
+    Model = "Bluer";
 }
 
 void ShuiPrinter::RunAsync(){

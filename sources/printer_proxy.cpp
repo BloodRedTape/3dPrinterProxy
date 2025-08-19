@@ -16,6 +16,9 @@ PrinterProxy::PrinterProxy(){
     m_Server.add_route("/api/v1/printers")
 		.get(std::bind(&PrinterProxy::GetPrinters, this, std::placeholders::_1, std::placeholders::_2));
 
+    m_Server.add_route("/api/v1/printers/:id")
+		.get(std::bind(&PrinterProxy::GetPrinter, this, std::placeholders::_1, std::placeholders::_2));
+
     m_Server.add_route("/api/v1/printers/:id/files/:filename/preview")
 		.get(std::bind(&PrinterProxy::GetPreview, this, std::placeholders::_1, std::placeholders::_2));
     m_Server.add_route("/api/v1/printers/:id/files/:filename/metadata")
@@ -103,6 +106,21 @@ void PrinterProxy::GetInfo(const beauty::request& req, beauty::response& resp){
 void PrinterProxy::GetPrinters(const beauty::request& req, beauty::response& resp) {
 	resp.set(beauty::content_type::application_json);
 	resp.body() = nlohmann::json(PrintersIds()).dump();
+}
+
+void PrinterProxy::GetPrinter(const beauty::request& req, beauty::response& resp) {
+	auto id = req.a("id").as_string();
+
+	if(!m_Printers.count(id))
+		throw beauty::http_error::client::not_found();
+	
+	auto printer = m_Printers.at(id);
+
+	resp.set(beauty::content_type::application_json);
+	resp.body() = nlohmann::json::object({
+		{"model", printer->Model},
+		{"manufacturer", printer->Manufacturer},
+	}).dump();
 }
 
 void PrinterProxy::GetPreview(const beauty::request& req, beauty::response& resp) {

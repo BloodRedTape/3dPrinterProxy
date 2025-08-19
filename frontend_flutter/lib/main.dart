@@ -1,94 +1,181 @@
 import 'package:flutter/cupertino.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' as shadcnui;
+import 'bloc.dart';
+import 'device.dart';
+import 'websocket_cubit.dart';
+import 'websocket_state.dart';
 
-class CupertinoExample1 extends StatefulWidget {
-  const CupertinoExample1({super.key});
+class PrinterApp extends StatefulWidget {
+  const PrinterApp({super.key});
 
   @override
-  State<CupertinoExample1> createState() => _CupertinoExample1State();
+  State<PrinterApp> createState() => _PrinterAppState();
 }
 
-class _CupertinoExample1State extends State<CupertinoExample1> {
-  int _counter = 0;
+class _PrinterAppState extends State<PrinterApp> {
+  late final DeviceCubit deviceCubit;
+  late final DeviceInfoCubit deviceInfoCubit;
+  late final PrinterProxyCubit printerProxyCubit;
+
+  @override
+  void initState() {
+    super.initState();
+    deviceCubit = DeviceCubit();
+    deviceInfoCubit = DeviceInfoCubit('ttb_1');
+    printerProxyCubit = PrinterProxyCubit(deviceId: 'ttb_1');
+
+    deviceInfoCubit.fetch();
+    printerProxyCubit.connect();
+  }
+
+  @override
+  void dispose() {
+    printerProxyCubit.close();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return CupertinoPageScaffold(
-      navigationBar: const CupertinoNavigationBar(middle: Text('My Cupertino App')),
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            Text('You have pushed the button this many times:', style: CupertinoTheme.of(context).textTheme.textStyle),
-            Text('$_counter', style: CupertinoTheme.of(context).textTheme.navTitleTextStyle),
-            const shadcnui.Gap(16),
-            CupertinoButton.filled(onPressed: () => setState(() => _counter++), child: const Icon(CupertinoIcons.add)),
-            const shadcnui.Gap(64),
-            shadcnui.ShadcnUI(
-              child: shadcnui.Card(
+    return MultiBlocProvider(
+      providers: [BlocProvider(create: (_) => deviceCubit), BlocProvider(create: (_) => deviceInfoCubit), BlocProvider(create: (_) => printerProxyCubit)],
+      child: BlocBuilder<DeviceCubit, String>(
+        builder: (context, selectedDevice) {
+          return BlocBuilder<DeviceInfoCubit, DeviceInfo?>(
+            builder: (context, deviceInfo) {
+              return BlocBuilder<PrinterProxyCubit, PrinterProxyState>(
+                builder: (context, proxyState) {
+                  String title = deviceInfo != null ? '${deviceInfo.manufacturer} ${deviceInfo.model}' : 'Loading...';
+
+                  PrinterState? printerState = proxyState.printers[selectedDevice];
+
+                  return CupertinoPageScaffold(
+                    navigationBar: CupertinoNavigationBar(
+                      middle: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(title, style: const TextStyle(fontSize: 16)),
+                          Text(
+                            proxyState.connected ? 'Connected' : 'Disconnected',
+                            style: TextStyle(fontSize: 12, color: proxyState.connected ? CupertinoColors.systemGreen : CupertinoColors.systemRed),
+                          ),
+                        ],
+                      ),
+                    ),
+                    child: SafeArea(child: printerState != null ? _buildPrinterState(context, printerState) : _buildNoData(context, proxyState)),
+                  );
+                },
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildPrinterState(BuildContext context, PrinterState printerState) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          shadcnui.ShadcnUI(
+            child: shadcnui.Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
                 child: Column(
-                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('You can also use shadcn_flutter widgets inside Material widgets'),
-                    const shadcnui.Gap(16),
-                    shadcnui.PrimaryButton(
-                      onPressed: () {
-                        showCupertinoDialog(
-                          context: context,
-                          builder: (context) {
-                            return CupertinoAlertDialog(
-                              title: const Text('Hello'),
-                              content: const Text('This is Cupertino dialog'),
-                              actions: [
-                                CupertinoDialogAction(
-                                  onPressed: () {
-                                    Navigator.of(context).pop();
-                                  },
-                                  child: const Text('Close'),
-                                ),
-                              ],
-                            );
-                          },
-                        );
-                      },
-                      child: const Text('Open Cupertino Dialog'),
+                    const Text('Temperatures', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const shadcnui.Gap(12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            children: [
+                              const Text('Bed'),
+                              Text('${printerState.bedTemperature.toStringAsFixed(1)}°C'),
+                              Text('Target: ${printerState.targetBedTemperature.toStringAsFixed(1)}°C', style: const TextStyle(fontSize: 12)),
+                            ],
+                          ),
+                        ),
+                        Expanded(
+                          child: Column(
+                            children: [
+                              const Text('Extruder'),
+                              Text('${printerState.extruderTemperature.toStringAsFixed(1)}°C'),
+                              Text('Target: ${printerState.targetExtruderTemperature.toStringAsFixed(1)}°C', style: const TextStyle(fontSize: 12)),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                    const shadcnui.Gap(8),
-                    shadcnui.SecondaryButton(
-                      onPressed: () {
-                        shadcnui.showDialog(
-                          context: context,
-                          builder: (context) {
-                            return shadcnui.AlertDialog(
-                              title: const Text('Hello'),
-                              content: const Text('This is shadcn_flutter dialog'),
-                              actions: [
-                                shadcnui.PrimaryButton(
-                                  onPressed: () {
-                                    Navigator.of(context).pop();
-                                  },
-                                  child: const Text('Close'),
-                                ),
-                              ],
-                            );
-                          },
-                        );
-                      },
-                      child: const Text('Open shadcn_flutter Dialog'),
-                    ),
+                    const shadcnui.Gap(12),
+                    Text('Feed Rate: ${printerState.feedRate.toStringAsFixed(1)}%'),
                   ],
                 ),
               ),
             ),
-          ],
+          ),
+          const shadcnui.Gap(16),
+          if (printerState.print != null) _buildPrintState(printerState.print!),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPrintState(PrintState printState) {
+    return shadcnui.ShadcnUI(
+      child: shadcnui.Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Print Job', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const shadcnui.Gap(12),
+              Text('File: ${printState.filename}'),
+              const shadcnui.Gap(8),
+              Text('Progress: ${(printState.progress * 100).toStringAsFixed(1)}%'),
+              const shadcnui.Gap(4),
+              shadcnui.LinearProgressIndicator(value: printState.progress),
+              const shadcnui.Gap(8),
+              Text('Layer: ${printState.layer}'),
+              Text('Height: ${printState.height.toStringAsFixed(2)}mm'),
+              Text('Status: ${printState.status.name}'),
+              const shadcnui.Gap(8),
+              Text('Progress: ${printState.currentBytesPrinted} / ${printState.targetBytesPrinted} bytes'),
+            ],
+          ),
         ),
       ),
     );
+  }
+
+  Widget _buildNoData(BuildContext context, PrinterProxyState proxyState) {
+    List<Widget> children = [];
+
+    if (proxyState.error != null) {
+      children.addAll([
+        const Icon(CupertinoIcons.exclamationmark_triangle, size: 48, color: CupertinoColors.systemRed),
+        const shadcnui.Gap(16),
+        Text('Error: ${proxyState.error}', textAlign: TextAlign.center),
+      ]);
+    } else if (!proxyState.connected) {
+      children.addAll([const CupertinoActivityIndicator(), const shadcnui.Gap(16), const Text('Connecting to printer...')]);
+    } else {
+      children.add(const Text('No printer data available'));
+    }
+
+    return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: children));
   }
 }
 
 void main() {
   runApp(
-    shadcnui.ShadcnApp(title: 'My App', home: CupertinoExample1(), theme: shadcnui.ThemeData(colorScheme: shadcnui.ColorSchemes.lightGreen(), radius: 0.5)),
+    shadcnui.ShadcnApp(
+      title: 'Printer Proxy',
+      home: const PrinterApp(),
+      theme: shadcnui.ThemeData(colorScheme: shadcnui.ColorSchemes.lightBlue(), radius: 0.0),
+    ),
   );
 }

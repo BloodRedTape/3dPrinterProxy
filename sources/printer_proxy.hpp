@@ -57,6 +57,8 @@ public:
 
     void GetPrinters(const beauty::request &req, beauty::response &resp);
 
+    void GetPrinter(const beauty::request &req, beauty::response &resp);
+
     void GetPreview(const beauty::request &req, beauty::response &resp);
 
     void GetMetadata(const beauty::request &req, beauty::response &resp);

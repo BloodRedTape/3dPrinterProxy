@@ -17,6 +17,9 @@ using GCodeCallback = std::function<void(GCodeResult)>;
 
 class Printer {
 public:
+	std::string Model;
+	std::string Manufacturer;
+
 	std::function<void()> OnStateChanged;
 public:
 	static void DefaultGCodeCallback(GCodeResult result);
