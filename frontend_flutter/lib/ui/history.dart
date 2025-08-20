@@ -47,7 +47,7 @@ class PrinterHistoryEntry extends StatelessWidget {
       padding: EdgeInsets.all(16),
       child: Row(
         children: [
-          Preview(previewSize, entry.contentHash),
+          Preview(previewSize, entry.fileId),
           const SizedBox(width: 16),
           SizedBox(
             height: previewSize * 0.8,

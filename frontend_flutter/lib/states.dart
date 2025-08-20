@@ -138,16 +138,16 @@ class PrinterProxyState {
 
 class HistoryEntry {
   final String filename;
-  final String contentHash;
+  final String fileId;
   final int printStart;
   final int printEnd;
 
-  HistoryEntry({required this.filename, required this.contentHash, required this.printStart, required this.printEnd});
+  HistoryEntry({required this.filename, required this.fileId, required this.printStart, required this.printEnd});
 
   factory HistoryEntry.fromJson(Map<String, dynamic> json) {
     return HistoryEntry(
       filename: json['Filename'] as String? ?? '',
-      contentHash: json['ContentHash']?.toString() ?? '0',
+      fileId: json['FileId'] as String? ?? '',
       printStart: _parseInt(json['PrintStart']),
       printEnd: _parseInt(json['PrintEnd']),
     );

@@ -63,9 +63,10 @@ class MessageCardContent extends StatelessWidget {
 
 class PrinterCard extends StatelessWidget {
   final Widget child;
-  final String? title;
+  final String title;
+  final List<Widget>? titleTrailing;
 
-  const PrinterCard({super.key, this.title, required this.child});
+  const PrinterCard({super.key, required this.title, required this.child, this.titleTrailing});
 
   @override
   Widget build(BuildContext context) {
@@ -73,7 +74,7 @@ class PrinterCard extends StatelessWidget {
       padding: EdgeInsets.all(0),
       child: Flex(
         direction: Axis.vertical,
-        children: [title != null ? AppBar(title: Text(title!), backgroundColor: Theme.of(context).colorScheme.card.withLuminance(0.98)) : SizedBox(), child],
+        children: [AppBar(title: Text(title), trailing: titleTrailing ?? [], backgroundColor: Theme.of(context).colorScheme.card.withLuminance(0.98)), child],
       ),
     );
   }
