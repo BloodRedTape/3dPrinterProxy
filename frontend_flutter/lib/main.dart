@@ -11,25 +11,23 @@ import 'states.dart';
 import 'package:flutter_material_design_icons/flutter_material_design_icons.dart';
 
 class PrinterPage extends BlocWidget<DeviceInfo> {
-  final Cubit<PrinterProxyState> proxyCubit;
-  PrinterPage(Cubit<DeviceInfo> cubit, this.proxyCubit) : super(cubit);
+  PrinterPage(Cubit<DeviceInfo> cubit) : super(cubit);
 
   @override
   Widget buildFromState(BuildContext context, DeviceInfo state) {
+    final proxyCubit = context.read<PrinterProxyCubit>();
+
     final cubit = PrinterStateCubit(proxyCubit, state.id);
-    return Padding(
-      padding: EdgeInsets.all(16),
-      child: Column(
-        children: [PrinterControlCard(cubit), const SizedBox(height: 20), PrinterUploadCard(cubit), const SizedBox(height: 20), PrinterPrintCard(cubit)],
-      ),
-    );
+    return Padding(padding: EdgeInsets.all(16), child: Column(children: [PrinterControlCard(cubit), const SizedBox(height: 20), PrinterPrintCard(cubit)]));
   }
 }
 
 class ProxyFrontend extends CubitWidget<DeviceInfoCubit, DeviceInfo?> {
   final PrinterProxyCubit proxyCubit;
+  final PrinterStateCubit stateCubit;
+  final DeviceInfoCubit deviceCubit;
 
-  ProxyFrontend(this.proxyCubit, {super.key}) : super(DeviceInfoCubit('ttb_1')) {
+  ProxyFrontend(this.proxyCubit, this.stateCubit, this.deviceCubit, {super.key}) : super(deviceCubit) {
     getCubit().fetch();
   }
 
@@ -43,7 +41,14 @@ class ProxyFrontend extends CubitWidget<DeviceInfoCubit, DeviceInfo?> {
           trailing: [IconButton.secondary(icon: const Icon(Icons.refresh), onPressed: () => getCubit().fetch())],
         ),
       ],
-      child: info != null ? PrinterPage(Cubit2(info), proxyCubit) : Center(child: Text('Proxy is out of reach')),
+      child: MultiBlocProvider(
+        providers: [
+          BlocProvider<PrinterProxyCubit>(create: (_) => proxyCubit),
+          BlocProvider<PrinterStateCubit>(create: (_) => stateCubit),
+          BlocProvider<DeviceInfoCubit>(create: (_) => deviceCubit),
+        ],
+        child: info != null ? PrinterPage(Cubit2(info)) : Center(child: Text('Proxy is out of reach')),
+      ),
     );
   }
 }
@@ -79,5 +84,11 @@ ColorScheme lightBlue() {
 }
 
 void main() {
-  runApp(ShadcnApp(title: 'Printer Proxy', home: ProxyFrontend(PrinterProxyCubit()..connect()), theme: ThemeData(colorScheme: lightBlue(), radius: 0.0)));
+  final proxyCubit = PrinterProxyCubit()..connect();
+  final deviceCubit = DeviceInfoCubit('ttb_1');
+  final printerCubit = PrinterStateCubit(proxyCubit, deviceCubit.device);
+
+  runApp(
+    ShadcnApp(title: 'Printer Proxy', home: ProxyFrontend(proxyCubit, printerCubit, deviceCubit), theme: ThemeData(colorScheme: lightBlue(), radius: 0.0)),
+  );
 }

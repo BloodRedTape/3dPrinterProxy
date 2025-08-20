@@ -9,7 +9,8 @@ String getOrigin() {
   if (kReleaseMode)
     return web.window.location.origin;
   else
-    return 'http://localhost:2228';
+    return 'http://192.168.1.209:2228';
+  return 'http://localhost:2228';
 }
 
 class DeviceCubit extends Cubit<String> {

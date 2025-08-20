@@ -1,7 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:frontend_flutter/bloc.dart';
-import 'package:frontend_flutter/common.dart';
-import 'package:frontend_flutter/control.dart';
+import 'package:frontend_flutter/ui/common.dart';
+import 'package:frontend_flutter/ui/control.dart';
 import 'package:frontend_flutter/proxy.dart';
 import 'package:frontend_flutter/states.dart';
 

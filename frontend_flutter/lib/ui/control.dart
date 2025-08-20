@@ -1,7 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_material_design_icons/flutter_material_design_icons.dart';
 import 'package:frontend_flutter/bloc.dart';
-import 'package:frontend_flutter/common.dart';
+import 'package:frontend_flutter/ui/common.dart';
 import 'package:frontend_flutter/proxy.dart';
 import 'package:frontend_flutter/states.dart';
 
