@@ -12,7 +12,26 @@ import 'package:frontend_flutter/states.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 class HistoryCubit extends Cubit<List<HistoryEntry>> {
+  PrinterState? printerState = null;
+
   HistoryCubit() : super([]);
+
+  void onStateChanged(PrinterState? newPrinterState) {
+    if (printerState == null && newPrinterState != null) {
+      fetch();
+      return;
+    }
+
+    if (printerState?.print != null && newPrinterState?.print == null) {
+      fetch();
+      return;
+    }
+
+    if (printerState?.print?.filename != newPrinterState?.print?.filename) {
+      fetch();
+      return;
+    }
+  }
 
   Future<void> fetch() async {
     final String device = 'ttb_1';
@@ -64,7 +83,7 @@ class PrinterHistoryEntry extends StatelessWidget {
 }
 
 class PrinterHistoryCard extends CubitWidget<HistoryCubit, List<HistoryEntry>> {
-  PrinterHistoryCard() : super(HistoryCubit()..fetch());
+  PrinterHistoryCard(super.cubit);
 
   @override
   Widget buildFromState(BuildContext context, List<HistoryEntry> state) {

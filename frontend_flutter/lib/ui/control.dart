@@ -50,6 +50,6 @@ class PrinterControlCard extends CubitWidget<PrinterStateCubit, PrinterState?> {
 
   @override
   Widget buildFromState(BuildContext context, PrinterState? state) {
-    return PrinterCard(title: 'Control', child: state != null ? ConnectedPrinterCardContent(getCubit()) : MessageCardContent('Printer Disconnected'));
+    return PrinterCard(title: 'Control', child: state != null ? ConnectedPrinterCardContent(getCubit()) : MessageCardContent('Printer is Off'));
   }
 }
