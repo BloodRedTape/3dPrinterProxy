@@ -49,7 +49,11 @@ void ShuiPrinterStorage::UploadGCodeFileAsync(const std::string& filename, const
 bool ShuiPrinterStorage::UploadGCodeFile(const std::string& filename, const std::string& content, bool print){
     std::string processed_gcode = PreprocessGCode(content);
 
-    std::optional<std::string> result = ShuiUpload::Run(m_Ip, filename, processed_gcode, print);
+    auto OnProgressChanged = [](std::int64_t now, std::int64_t target) {
+        Println("%/%", now, target);
+    };
+
+    std::optional<std::string> result = ShuiUpload::Run(m_Ip, filename, processed_gcode, print, OnProgressChanged);
 
     bool success = !result.has_value();
 

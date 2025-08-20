@@ -5,36 +5,38 @@
 #include <iomanip>
 #include <bsl/log.hpp>
 
-ShuiUpload::ShuiUpload(boost::asio::io_context &context, const std::string& ip, const std::string& filename, std::string&& content, bool start_printing, CompletionCallback callback): 
+ShuiUpload::ShuiUpload(boost::asio::io_context &context, const std::string& ip, const std::string& filename, std::string&& content, bool start_printing, CompletionCallback callback, ProgressCallback progress): 
     m_Socket(context), 
     m_Ip(ip), 
     m_Filename(filename), 
     m_Content(std::move(content)), 
     m_StartPrinting(start_printing), 
-    m_Callback(callback) 
+    m_Callback(callback),
+    m_Progress(progress)
 {
     m_Boundary = GenerateBoundary();
 }
 
 
-void ShuiUpload::RunAsync(const std::string& ip, const std::string& filename, std::string&& content, bool start_printing, CompletionCallback callback) {
-    std::make_shared<ShuiUpload>(Async::Context(), ip, filename, std::move(content), start_printing, callback)->Connect();
+void ShuiUpload::RunAsync(const std::string& ip, const std::string& filename, std::string&& content, bool start_printing, CompletionCallback callback, ProgressCallback progress) {
+    std::make_shared<ShuiUpload>(Async::Context(), ip, filename, std::move(content), start_printing, callback, progress)->Connect();
 }
 
-std::optional<std::string> ShuiUpload::Run(const std::string& ip, const std::string& filename, const std::string& content, bool start_printing) {
+std::optional<std::string> ShuiUpload::Run(const std::string& ip, const std::string& filename, const std::string& content, bool start_printing, ProgressCallback progress) {
     boost::asio::io_context blocking_context;
 
     std::optional<std::variant<std::string, const std::string*>> result_opt;
 
     auto upload = std::make_shared<ShuiUpload>(blocking_context, ip, filename, std::string(content), start_printing, [&](std::variant<std::string, const std::string*> got_result) {
         result_opt = std::move(got_result);
-    });
+    }, progress);
 
     upload->Connect();
     
     //Limit file upload to one minute to fix freezes on error
-    static constexpr const auto FileUploadMaxTimeLimit = std::chrono::seconds(120);
-    blocking_context.run_for(FileUploadMaxTimeLimit);
+    static constexpr const auto MaxOpDuration = std::chrono::seconds(15);
+
+    while(blocking_context.run_one_for(MaxOpDuration));
 
     if(!result_opt.has_value())
         return "Hard Timeout";
@@ -88,7 +90,7 @@ void ShuiUpload::Connect() {
         }
         return;
     }
-    
+
     m_Socket.async_connect(endpoint, boost::beast::bind_front_handler(&ShuiUpload::OnConnect, shared_from_this()));
 }
 
@@ -111,17 +113,21 @@ void ShuiUpload::OnConnect(boost::beast::error_code ec) {
 }
 
 void ShuiUpload::WriteNextChunk() {
-    static constexpr std::size_t CHUNK_SIZE = 8 * 1024; // 8KB
+    static constexpr std::size_t AllowedBandwidth = 40 * 1024; //40KB/s
+    static constexpr std::size_t ChunkSize = 8 * 1024; // 8KB
+    static constexpr std::size_t ChunksPerSecond = AllowedBandwidth / ChunkSize; // 8KB
+    static constexpr auto SleepBetweenChunks = std::chrono::milliseconds(1000 / ChunksPerSecond);
     
     if (m_BytesWritten >= m_SerializedRequest.size()) {
         OnWrite(boost::beast::error_code{}, m_BytesWritten);
         return;
     }
-    
     std::size_t remaining = m_SerializedRequest.size() - m_BytesWritten;
-    std::size_t to_write = std::min(CHUNK_SIZE, remaining);
+    std::size_t to_write = std::min(ChunkSize, remaining);
     
     auto buffer = boost::asio::buffer(m_SerializedRequest.data() + m_BytesWritten, to_write);
+    
+    std::this_thread::sleep_for(SleepBetweenChunks);
     
     boost::asio::async_write(m_Socket, buffer,
         [this, self = shared_from_this()](boost::beast::error_code ec, std::size_t bytes) {
@@ -131,6 +137,9 @@ void ShuiUpload::WriteNextChunk() {
             }
             
             m_BytesWritten += bytes;
+
+            std::call(m_Progress, m_BytesWritten, m_SerializedRequest.size());
+
             WriteNextChunk();
         });
 }
