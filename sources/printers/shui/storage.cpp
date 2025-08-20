@@ -283,7 +283,12 @@ bool ShuiPrinterStorage::OnFileUploaded(const std::string& filename, const std::
     }
 
     {
-        PROFILE_SCOPE(ShuiPrinterStorage, OnFileUploaded_SaveToFile);
+        PROFILE_SCOPE(ShuiPrinterStorage, OnFileUploaded_SaveToFileMetadata);
+        Save(m_ContentHashToMetadata[entry.ContentHash], entry.ContentHash);
+    }
+
+    {
+        PROFILE_SCOPE(ShuiPrinterStorage, OnFileUploaded_SaveToFileEntry);
         Save(entry, _83);
     }
 
@@ -310,6 +315,14 @@ void ShuiPrinterStorage::Save(const GCodeFileEntry& entry, const std::string& _8
     std::filesystem::create_directories(m_FilesPath);
     
     entry.SaveToFile(entry_path);
+}
+
+void ShuiPrinterStorage::Save(const GCodeFileMetadata& entry, std::size_t content_hash) const{
+    auto metadata_path = m_MetadataPath / ToString(content_hash);
+
+    std::filesystem::create_directories(m_MetadataPath);
+    
+    File::WriteEntire(metadata_path, nlohmann::json(entry).dump());
 }
 
 void ShuiPrinterStorage::Load() {

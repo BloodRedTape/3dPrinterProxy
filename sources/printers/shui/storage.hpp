@@ -67,5 +67,7 @@ private:
 
 	void Save(const GCodeFileEntry& entry, const std::string& _83)const;
 
+	void Save(const GCodeFileMetadata& entry, std::size_t content_hash)const;
+
 	void Load();
 };

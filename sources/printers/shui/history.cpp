@@ -42,7 +42,7 @@ void ShuiPrinterHistory::OnStateChanged(std::optional<PrinterState> state){
 		m_PendingEntry = HistoryEntry();
 		m_PendingEntry->PrintStart = Now();
 		m_PendingEntry->Filename = state->Print->Filename;
-		m_PendingEntry->ContentHash = m_Storage.GetContentHashForFilename(m_PendingEntry->Filename).value_or(0);
+		m_PendingEntry->FileId = ToString(m_Storage.GetContentHashForFilename(m_PendingEntry->Filename).value_or(0));
 	}
 }
 

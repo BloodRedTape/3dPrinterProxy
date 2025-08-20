@@ -22,7 +22,7 @@ class PrintCardContent extends StatelessWidget {
       padding: EdgeInsets.all(16),
       child: Row(
         children: [
-          Preview(imageSize, state.filename),
+          Preview(imageSize, state.filename.length > 0 ? state.filename : 'Unknown'),
           SizedBox(width: 16),
           Expanded(
             child: SizedBox(
