@@ -1,9 +1,29 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:duration/duration.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:flutter/foundation.dart';
 import 'bloc.dart';
 import 'device.dart';
+
+enum MessageType {
+  init('init'),
+  state('state');
+
+  const MessageType(this.name);
+  final String name;
+
+  static MessageType fromString(String type) {
+    switch (type) {
+      case 'init':
+        return MessageType.init;
+      case 'state':
+        return MessageType.state;
+      default:
+        return MessageType.state;
+    }
+  }
+}
 
 enum PrintStatus {
   heating('Heating'),
@@ -23,25 +43,6 @@ enum PrintStatus {
         return PrintStatus.printing;
       default:
         return PrintStatus.busy;
-    }
-  }
-}
-
-enum MessageType {
-  init('init'),
-  state('state');
-
-  const MessageType(this.name);
-  final String name;
-
-  static MessageType fromString(String type) {
-    switch (type) {
-      case 'init':
-        return MessageType.init;
-      case 'state':
-        return MessageType.state;
-      default:
-        return MessageType.state;
     }
   }
 }
@@ -112,26 +113,14 @@ class PrinterProxyMessage {
   final String id;
   final Map<String, dynamic>? content;
 
-  PrinterProxyMessage({
-    required this.type,
-    required this.id,
-    this.content,
-  });
+  PrinterProxyMessage({required this.type, required this.id, this.content});
 
   factory PrinterProxyMessage.fromJson(Map<String, dynamic> json) {
-    return PrinterProxyMessage(
-      type: MessageType.fromString(json['type'] ?? 'state'),
-      id: json['id'] ?? '',
-      content: json['content'],
-    );
+    return PrinterProxyMessage(type: MessageType.fromString(json['type'] ?? 'state'), id: json['id'] ?? '', content: json['content']);
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'type': type.name,
-      'id': id,
-      'content': content,
-    };
+    return {'type': type.name, 'id': id, 'content': content};
   }
 }
 
@@ -140,21 +129,42 @@ class PrinterProxyState {
   final Map<String, PrinterState> printers;
   final String? error;
 
-  PrinterProxyState({
-    this.connected = false,
-    this.printers = const {},
-    this.error,
-  });
+  PrinterProxyState({this.connected = false, this.printers = const {}, this.error});
 
-  PrinterProxyState copyWith({
-    bool? connected,
-    Map<String, PrinterState>? printers,
-    String? error,
-  }) {
-    return PrinterProxyState(
-      connected: connected ?? this.connected,
-      printers: printers ?? this.printers,
-      error: error,
+  PrinterProxyState copyWith({bool? connected, Map<String, PrinterState>? printers, String? error}) {
+    return PrinterProxyState(connected: connected ?? this.connected, printers: printers ?? this.printers, error: error);
+  }
+}
+
+class HistoryEntry {
+  final String filename;
+  final String contentHash;
+  final int printStart;
+  final int printEnd;
+
+  HistoryEntry({required this.filename, required this.contentHash, required this.printStart, required this.printEnd});
+
+  factory HistoryEntry.fromJson(Map<String, dynamic> json) {
+    return HistoryEntry(
+      filename: json['Filename'] as String? ?? '',
+      contentHash: json['ContentHash']?.toString() ?? '0',
+      printStart: _parseInt(json['PrintStart']),
+      printEnd: _parseInt(json['PrintEnd']),
+    );
+  }
+
+  static int _parseInt(dynamic v) {
+    if (v is int) return v;
+    return int.tryParse(v.toString()) ?? 0;
+  }
+
+  String get formattedDuration => Duration(seconds: (printEnd - printStart).clamp(0, double.infinity).toInt()).toString().split('.').first;
+
+  String getPrettyDuration() {
+    final seconds = (printEnd - printStart).clamp(0, double.infinity).toInt();
+    return prettyDuration(
+      Duration(seconds: seconds),
+      abbreviated: true, // h / m / s
     );
   }
 }

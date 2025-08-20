@@ -5,6 +5,7 @@ import 'package:frontend_flutter/ui/common.dart';
 import 'package:frontend_flutter/ui/control.dart';
 import 'package:frontend_flutter/proxy.dart';
 import 'package:frontend_flutter/states.dart';
+import 'package:frontend_flutter/ui/preview.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 class PrintCardContent extends StatelessWidget {
@@ -14,9 +15,6 @@ class PrintCardContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    //final info = context.read<DeviceInfoCubit>();
-    final device = 'ttb_1';
-
     final double imageSize = 150;
     final double progressWidth = MediaQuery.of(context).size.width * 0.8 - imageSize;
 
@@ -24,10 +22,7 @@ class PrintCardContent extends StatelessWidget {
       padding: EdgeInsets.all(16),
       child: Row(
         children: [
-          Card(
-            padding: EdgeInsets.all(0),
-            child: SizedBox(height: imageSize, child: Image.network('${getOrigin()}/api/v1/printers/${device}/files/${state.filename}/preview')),
-          ),
+          Preview(imageSize, state.filename),
           SizedBox(width: 16),
           Expanded(
             child: SizedBox(

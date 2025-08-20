@@ -3,6 +3,7 @@
 #include "pch/std.hpp"
 #include <bsl/log.hpp>
 #include <bsl/file.hpp>
+#include <bsl/parse.hpp>
 #include "config.hpp"
 
 DEFINE_LOG_CATEGORY(Proxy);
@@ -19,9 +20,9 @@ PrinterProxy::PrinterProxy(){
     m_Server.add_route("/api/v1/printers/:id")
 		.get(std::bind(&PrinterProxy::GetPrinter, this, std::placeholders::_1, std::placeholders::_2));
 
-    m_Server.add_route("/api/v1/printers/:id/files/:filename/preview")
+    m_Server.add_route("/api/v1/printers/:id/files/:filename_or_hash/preview")
 		.get(std::bind(&PrinterProxy::GetPreview, this, std::placeholders::_1, std::placeholders::_2));
-    m_Server.add_route("/api/v1/printers/:id/files/:filename/metadata")
+    m_Server.add_route("/api/v1/printers/:id/files/:filename_or_hash/metadata")
 		.get(std::bind(&PrinterProxy::GetMetadata, this, std::placeholders::_1, std::placeholders::_2));
 
     m_Server.add_route("/api/v1/printers/:id/history")
@@ -125,13 +126,16 @@ void PrinterProxy::GetPrinter(const beauty::request& req, beauty::response& resp
 
 void PrinterProxy::GetPreview(const beauty::request& req, beauty::response& resp) {
 	auto id = req.a("id").as_string();
-	auto filename = req.a("filename").as_string();
+	auto filename_or_hash = req.a("filename_or_hash").as_string();
 
 	if(!m_Printers.count(id))
 		throw beauty::http_error::client::not_found();
 	
 	auto printer = m_Printers.at(id);
-	const GCodeFileMetadata *metadata = printer->Storage().GetMetadata(filename);
+	const GCodeFileMetadata *metadata = printer->Storage().GetMetadata(filename_or_hash);
+
+	if(!metadata)
+		metadata = printer->Storage().GetMetadata(FromString<std::size_t>(filename_or_hash).value_or(0));
 
 	if(!metadata)
 		throw beauty::http_error::client::not_found();
@@ -145,13 +149,16 @@ void PrinterProxy::GetPreview(const beauty::request& req, beauty::response& resp
 
 void PrinterProxy::GetMetadata(const beauty::request& req, beauty::response& resp) {
 	auto id = req.a("id").as_string();
-	auto filename = req.a("filename").as_string();
+	auto filename_or_hash = req.a("filename_or_hash").as_string();
 
 	if(!m_Printers.count(id))
 		throw beauty::http_error::client::not_found();
 	
 	auto printer = m_Printers.at(id);
-	const GCodeFileMetadata *metadata = printer->Storage().GetMetadata(filename);
+	const GCodeFileMetadata *metadata = printer->Storage().GetMetadata(filename_or_hash);
+
+	if(!metadata)
+		metadata = printer->Storage().GetMetadata(FromString<std::size_t>(filename_or_hash).value_or(0));
 
 	if(!metadata)
 		throw beauty::http_error::client::not_found();

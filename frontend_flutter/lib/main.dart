@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:frontend_flutter/ui/control.dart';
+import 'package:frontend_flutter/ui/history.dart';
 import 'package:frontend_flutter/ui/print.dart';
 import 'package:frontend_flutter/ui/upload.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
@@ -18,7 +19,12 @@ class PrinterPage extends BlocWidget<DeviceInfo> {
     final proxyCubit = context.read<PrinterProxyCubit>();
 
     final cubit = PrinterStateCubit(proxyCubit, state.id);
-    return Padding(padding: EdgeInsets.all(16), child: Column(children: [PrinterControlCard(cubit), const SizedBox(height: 20), PrinterPrintCard(cubit)]));
+    return Padding(
+      padding: EdgeInsets.all(16),
+      child: Column(
+        children: [PrinterControlCard(cubit), const SizedBox(height: 20), PrinterPrintCard(cubit), const SizedBox(height: 20), PrinterHistoryCard()],
+      ),
+    );
   }
 }
 
