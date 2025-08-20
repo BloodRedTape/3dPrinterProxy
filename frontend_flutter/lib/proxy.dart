@@ -1,35 +1,40 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:web_socket_channel/web_socket_channel.dart';
-import 'package:flutter/foundation.dart';
 import 'bloc.dart';
 import 'device.dart';
-import 'websocket_state.dart';
+import 'states.dart';
 
 class PrinterProxyCubit extends Cubit<PrinterProxyState> {
   WebSocketChannel? _channel;
   StreamSubscription? _subscription;
   Timer? _reconnectTimer;
-  final String deviceId;
   bool _disposed = false;
 
-  PrinterProxyCubit({required this.deviceId}) : super(PrinterProxyState());
+  PrinterProxyCubit() : super(PrinterProxyState());
 
   void connect() {
     if (_disposed) return;
 
     try {
       final origin = getOrigin();
-      final wsUrl = origin.replaceFirst('http', 'ws') + '/api/v1/ws';
-      
-      _channel = WebSocketChannel.connect(Uri.parse(wsUrl));
-      
-      _subscription = _channel!.stream.listen(
-        _onMessage,
-        onError: _onError,
-        onDone: _onDisconnected,
-      );
-      
+
+      String wsUrl = "";
+      if (origin.startsWith('https')) {
+        wsUrl = '${origin.replaceFirst('https', 'ws')}/api/v1/ws';
+      }
+      if (origin.startsWith('http')) {
+        wsUrl = '${origin.replaceFirst('http', 'ws')}/api/v1/ws';
+      }
+
+      final Uri uri = Uri.parse(wsUrl);
+
+      print(uri);
+
+      _channel = WebSocketChannel.connect(uri);
+
+      _subscription = _channel!.stream.listen(_onMessage, onError: _onError, onDone: _onDisconnected);
+
       emit(state.copyWith(connected: true, error: null));
     } catch (e) {
       emit(state.copyWith(connected: false, error: e.toString()));
@@ -43,7 +48,7 @@ class PrinterProxyCubit extends Cubit<PrinterProxyState> {
     _channel?.sink.close();
     _channel = null;
     _subscription = null;
-    
+
     if (!_disposed) {
       emit(state.copyWith(connected: false));
     }
@@ -60,39 +65,18 @@ class PrinterProxyCubit extends Cubit<PrinterProxyState> {
     }
   }
 
-  void setTargetBedTemperature(double temperature) {
-    final message = PrinterProxyMessage(
-      type: MessageType.state,
-      id: deviceId,
-      content: {
-        'property': 'target_bed',
-        'value': temperature,
-      },
-    );
+  void setTargetBedTemperature(String deviceId, double temperature) {
+    final message = PrinterProxyMessage(type: MessageType.state, id: deviceId, content: {'property': 'target_bed', 'value': temperature});
     sendMessage(message);
   }
 
-  void setTargetExtruderTemperature(double temperature) {
-    final message = PrinterProxyMessage(
-      type: MessageType.state,
-      id: deviceId,
-      content: {
-        'property': 'target_extruder',
-        'value': temperature,
-      },
-    );
+  void setTargetExtruderTemperature(String deviceId, double temperature) {
+    final message = PrinterProxyMessage(type: MessageType.state, id: deviceId, content: {'property': 'target_extruder', 'value': temperature});
     sendMessage(message);
   }
 
-  void setFeedRate(double feedRate) {
-    final message = PrinterProxyMessage(
-      type: MessageType.state,
-      id: deviceId,
-      content: {
-        'property': 'feedrate',
-        'value': feedRate,
-      },
-    );
+  void setFeedRate(String deviceId, double feedRate) {
+    final message = PrinterProxyMessage(type: MessageType.state, id: deviceId, content: {'property': 'feedrate', 'value': feedRate});
     sendMessage(message);
   }
 
@@ -102,7 +86,7 @@ class PrinterProxyCubit extends Cubit<PrinterProxyState> {
     try {
       final jsonData = jsonDecode(data as String);
       final message = PrinterProxyMessage.fromJson(jsonData);
-      
+
       switch (message.type) {
         case MessageType.init:
           break;
@@ -111,11 +95,8 @@ class PrinterProxyCubit extends Cubit<PrinterProxyState> {
             final printerState = PrinterState.fromJson(message.content!);
             final updatedPrinters = Map<String, PrinterState>.from(state.printers);
             updatedPrinters[message.id] = printerState;
-            
-            emit(state.copyWith(
-              printers: updatedPrinters,
-              error: null,
-            ));
+
+            emit(state.copyWith(printers: updatedPrinters, error: null));
           }
           break;
       }
@@ -126,21 +107,21 @@ class PrinterProxyCubit extends Cubit<PrinterProxyState> {
 
   void _onError(error) {
     if (_disposed) return;
-    
+
     emit(state.copyWith(connected: false, error: error.toString()));
     _scheduleReconnect();
   }
 
   void _onDisconnected() {
     if (_disposed) return;
-    
+
     emit(state.copyWith(connected: false));
     _scheduleReconnect();
   }
 
   void _scheduleReconnect() {
     if (_disposed) return;
-    
+
     _cancelReconnectTimer();
     _reconnectTimer = Timer(const Duration(seconds: 5), () {
       if (!_disposed) {
@@ -159,5 +140,19 @@ class PrinterProxyCubit extends Cubit<PrinterProxyState> {
     _disposed = true;
     disconnect();
     super.close();
+  }
+}
+
+class PrinterStateCubit extends Cubit<PrinterState?> {
+  Cubit<PrinterProxyState> cubit;
+  String deviceId;
+
+  PrinterStateCubit(this.cubit, this.deviceId) : super(null) {
+    cubit.stream.listen(onNewState);
+  }
+
+  void onNewState(PrinterProxyState state) {
+    print(state.connected);
+    emit(state.printers.containsKey(deviceId) ? state.printers[deviceId] : null);
   }
 }

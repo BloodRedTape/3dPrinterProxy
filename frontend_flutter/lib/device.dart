@@ -17,13 +17,18 @@ class DeviceCubit extends Cubit<String> {
 }
 
 class DeviceInfo {
+  final String id;
   final String manufacturer;
   final String model;
 
-  DeviceInfo(this.manufacturer, this.model);
+  DeviceInfo(this.id, this.manufacturer, this.model);
 
-  factory DeviceInfo.fromJson(Map<String, dynamic> json) {
-    return DeviceInfo(json['manufacturer'], json['model']);
+  factory DeviceInfo.fromJson(String id, Map<String, dynamic> json) {
+    return DeviceInfo(id, json['manufacturer'], json['model']);
+  }
+
+  String name() {
+    return '$manufacturer $model';
   }
 }
 
@@ -37,7 +42,7 @@ class DeviceInfoCubit extends Cubit<DeviceInfo?> {
 
       final data = json.decode(response.body);
 
-      emit(DeviceInfo.fromJson(data));
+      emit(DeviceInfo.fromJson(device, data));
     } catch (e) {
       emit(null);
     }

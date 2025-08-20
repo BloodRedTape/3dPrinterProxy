@@ -28,3 +28,11 @@ abstract class BlocWidget<StateType> extends StatelessWidget {
     cubit.emit(state);
   }
 }
+
+abstract class CubitWidget<CubitType extends Cubit<StateType>, StateType> extends BlocWidget<StateType> {
+  const CubitWidget(CubitType cubit, {super.key}) : super(cubit);
+
+  CubitType getCubit() {
+    return cubit as CubitType;
+  }
+}
