@@ -5,13 +5,45 @@ import 'bloc.dart';
 import 'device.dart';
 import 'states.dart';
 
-class PrinterProxyCubit extends Cubit<PrinterProxyState> {
+class PrinterProxyMessage {
+  final MessageType type;
+  final String id;
+  final Map<String, dynamic>? content;
+
+  PrinterProxyMessage({required this.type, required this.id, this.content});
+
+  factory PrinterProxyMessage.fromJson(Map<String, dynamic> json) {
+    return PrinterProxyMessage(type: MessageType.fromString(json['type'] ?? 'state'), id: json['id'] ?? '', content: json['content']);
+  }
+
+  Map<String, dynamic> toJson() {
+    return {'type': type.name, 'id': id, 'content': content};
+  }
+}
+
+class PrinterProxyState {
+  final bool connected;
+  final Map<String, PrinterState> printers;
+  final String? error;
+
+  PrinterProxyState({this.connected = false, this.printers = const {}, this.error});
+
+  PrinterProxyState copyWith({bool? connected, Map<String, PrinterState>? printers, String? error}) {
+    return PrinterProxyState(connected: connected ?? this.connected, printers: printers ?? this.printers, error: error);
+  }
+}
+
+typedef PrinterStateChangedCallback = void Function(PrinterState?);
+typedef PrinterStorageUploadStateChangedCallback = void Function(PrinterStorageUploadState?);
+
+class PrinterProxyCubit {
   WebSocketChannel? _channel;
   StreamSubscription? _subscription;
   Timer? _reconnectTimer;
   bool _disposed = false;
 
-  PrinterProxyCubit() : super(PrinterProxyState());
+  Map<String, PrinterStateChangedCallback> onStateChanged = {};
+  Map<String, PrinterStorageUploadStateChangedCallback> onUploadChanged = {};
 
   void connect() {
     if (_disposed) return;
@@ -34,11 +66,19 @@ class PrinterProxyCubit extends Cubit<PrinterProxyState> {
       _channel = WebSocketChannel.connect(uri);
 
       _subscription = _channel!.stream.listen(_onMessage, onError: _onError, onDone: _onDisconnected);
-
-      emit(state.copyWith(connected: true, error: null));
     } catch (e) {
-      emit(state.copyWith(connected: false, error: e.toString()));
+      _reset();
       _scheduleReconnect();
+    }
+  }
+
+  void _reset() {
+    for (var callback in onStateChanged.values) {
+      callback(null);
+    }
+
+    for (var callback in onUploadChanged.values) {
+      callback(null);
     }
   }
 
@@ -50,18 +90,16 @@ class PrinterProxyCubit extends Cubit<PrinterProxyState> {
     _subscription = null;
 
     if (!_disposed) {
-      emit(state.copyWith(connected: false));
+      _reset();
     }
   }
 
   void sendMessage(PrinterProxyMessage message) {
-    if (_channel != null && state.connected) {
+    if (_channel != null) {
       try {
         final jsonString = jsonEncode(message.toJson());
         _channel!.sink.add(jsonString);
-      } catch (e) {
-        emit(state.copyWith(error: 'Failed to send message: $e'));
-      }
+      } catch (e) {}
     }
   }
 
@@ -91,31 +129,29 @@ class PrinterProxyCubit extends Cubit<PrinterProxyState> {
         case MessageType.init:
           break;
         case MessageType.state:
-          if (message.content != null) {
-            final printerState = PrinterState.fromJson(message.content!);
-            final updatedPrinters = Map<String, PrinterState>.from(state.printers);
-            updatedPrinters[message.id] = printerState;
-
-            emit(state.copyWith(printers: updatedPrinters, error: null));
+          try {
+            onStateChanged[message.id]?.call(PrinterState.fromJson(message.content!));
+          } catch (e) {
+            onStateChanged[message.id]?.call(null);
           }
           break;
+        case MessageType.upload:
+          break;
       }
-    } catch (e) {
-      emit(state.copyWith(error: 'Failed to parse message: $e'));
-    }
+    } catch (e) {}
   }
 
   void _onError(error) {
     if (_disposed) return;
 
-    emit(state.copyWith(connected: false, error: error.toString()));
+    _reset();
     _scheduleReconnect();
   }
 
   void _onDisconnected() {
     if (_disposed) return;
 
-    emit(state.copyWith(connected: false));
+    _reset();
     _scheduleReconnect();
   }
 
@@ -134,25 +170,17 @@ class PrinterProxyCubit extends Cubit<PrinterProxyState> {
     _reconnectTimer?.cancel();
     _reconnectTimer = null;
   }
-
-  @override
-  Future<void> close() async {
-    _disposed = true;
-    disconnect();
-    super.close();
-  }
 }
 
 class PrinterStateCubit extends Cubit<PrinterState?> {
-  Cubit<PrinterProxyState> cubit;
+  PrinterProxyCubit proxy;
   String deviceId;
 
-  PrinterStateCubit(this.cubit, this.deviceId) : super(null) {
-    cubit.stream.listen(onNewState);
+  PrinterStateCubit(this.proxy, this.deviceId) : super(null) {
+    proxy.onStateChanged[deviceId] = onNewState;
   }
 
-  void onNewState(PrinterProxyState state) {
-    print(state.connected);
-    emit(state.printers.containsKey(deviceId) ? state.printers[deviceId] : null);
+  void onNewState(PrinterState? state) {
+    emit(state);
   }
 }

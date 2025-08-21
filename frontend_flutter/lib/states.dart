@@ -8,7 +8,8 @@ import 'device.dart';
 
 enum MessageType {
   init('init'),
-  state('state');
+  state('state'),
+  upload('upload');
 
   const MessageType(this.name);
   final String name;
@@ -19,6 +20,8 @@ enum MessageType {
         return MessageType.init;
       case 'state':
         return MessageType.state;
+      case 'upload':
+        return MessageType.upload;
       default:
         return MessageType.state;
     }
@@ -137,34 +140,6 @@ class PrinterState {
   }
 }
 
-class PrinterProxyMessage {
-  final MessageType type;
-  final String id;
-  final Map<String, dynamic>? content;
-
-  PrinterProxyMessage({required this.type, required this.id, this.content});
-
-  factory PrinterProxyMessage.fromJson(Map<String, dynamic> json) {
-    return PrinterProxyMessage(type: MessageType.fromString(json['type'] ?? 'state'), id: json['id'] ?? '', content: json['content']);
-  }
-
-  Map<String, dynamic> toJson() {
-    return {'type': type.name, 'id': id, 'content': content};
-  }
-}
-
-class PrinterProxyState {
-  final bool connected;
-  final Map<String, PrinterState> printers;
-  final String? error;
-
-  PrinterProxyState({this.connected = false, this.printers = const {}, this.error});
-
-  PrinterProxyState copyWith({bool? connected, Map<String, PrinterState>? printers, String? error}) {
-    return PrinterProxyState(connected: connected ?? this.connected, printers: printers ?? this.printers, error: error);
-  }
-}
-
 class PrintFinishState {
   double progress;
   int bytes;
@@ -223,6 +198,59 @@ class HistoryEntry {
     return prettyDuration(
       Duration(seconds: seconds),
       abbreviated: true, // h / m / s
+    );
+  }
+}
+
+enum PrinterStorageUploadStatus {
+  sending('Sending'),
+  success('Success'),
+  failure('Failure');
+
+  const PrinterStorageUploadStatus(this.name);
+  final String name;
+
+  static PrinterStorageUploadStatus fromString(String value) {
+    switch (value.toLowerCase()) {
+      case 'sending':
+        return PrinterStorageUploadStatus.sending;
+      case 'success':
+        return PrinterStorageUploadStatus.success;
+      case 'failure':
+        return PrinterStorageUploadStatus.failure;
+      default:
+        return PrinterStorageUploadStatus.sending; // default like C++
+    }
+  }
+
+  @override
+  String toString() => name;
+
+  String toJson() => name;
+
+  static PrinterStorageUploadStatus fromJson(String value) => fromString(value);
+}
+
+class PrinterStorageUploadState {
+  int current;
+  int target;
+  String filename;
+  PrinterStorageUploadStatus status;
+
+  PrinterStorageUploadState({
+    required this.filename,
+    this.current = 0,
+    this.target = 0,
+    this.status = PrinterStorageUploadStatus.sending, // default
+  });
+
+  // Factory to construct from JSON
+  factory PrinterStorageUploadState.fromJson(Map<String, dynamic> json) {
+    return PrinterStorageUploadState(
+      filename: json['Filename'] ?? '',
+      current: json['Current'] ?? 0,
+      target: json['Target'] ?? 0,
+      status: json['Status'] != null ? PrinterStorageUploadStatus.fromJson(json['Status']) : PrinterStorageUploadStatus.sending,
     );
   }
 }

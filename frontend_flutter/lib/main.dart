@@ -13,14 +13,14 @@ import 'package:flutter_material_design_icons/flutter_material_design_icons.dart
 import 'dart:html' as html;
 
 class PrinterPage extends BlocWidget<DeviceInfo> {
-  PrinterPage(Cubit<DeviceInfo> cubit) : super(cubit);
+  final PrinterProxyCubit proxy;
+  PrinterPage(Cubit<DeviceInfo> cubit, this.proxy) : super(cubit);
 
   @override
   Widget buildFromState(BuildContext context, DeviceInfo state) {
-    final proxyCubit = context.read<PrinterProxyCubit>();
     final historyCubit = context.read<HistoryCubit>();
 
-    final cubit = PrinterStateCubit(proxyCubit, state.id);
+    final cubit = PrinterStateCubit(proxy, state.id);
     return Padding(
       padding: EdgeInsets.all(16),
       child: Column(
@@ -58,12 +58,11 @@ class ProxyFrontend extends CubitWidget<DeviceInfoCubit, DeviceInfo?> {
       ],
       child: MultiBlocProvider(
         providers: [
-          BlocProvider<PrinterProxyCubit>(create: (_) => proxyCubit),
           BlocProvider<PrinterStateCubit>(create: (_) => stateCubit),
           BlocProvider<DeviceInfoCubit>(create: (_) => deviceCubit),
           BlocProvider<HistoryCubit>(create: (_) => historyCubit),
         ],
-        child: info != null ? PrinterPage(Cubit2(info)) : Center(child: Text('Proxy is out of reach')),
+        child: info != null ? PrinterPage(Cubit2(info), proxyCubit) : Center(child: Text('Proxy is out of reach')),
       ),
     );
   }
