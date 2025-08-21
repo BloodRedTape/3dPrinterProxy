@@ -11,6 +11,7 @@ class ShuiPrinterHistory: public PrinterHistory {
 	PrinterStorage &m_Storage;
 
 	std::optional<HistoryEntry> m_PendingEntry;
+	std::optional<PrinterState> m_LastState;
 public:
 	ShuiPrinterHistory(const std::filesystem::path &filepath, PrinterStorage &storage);
 

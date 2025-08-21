@@ -33,6 +33,18 @@ void ShuiPrinterHistory::OnStateChanged(std::optional<PrinterState> state){
 	if (m_PendingEntry && (!state || !state->Print || !state->Print->Filename.size())) {
 		m_PendingEntry->PrintEnd = Now();
 
+		if(m_LastState && m_LastState->Print){
+			const auto &print = *m_LastState->Print;
+			auto bytes_left = print.TargetBytesPrinted - print.CurrentBytesPrinted;
+
+			m_PendingEntry->FinishReason = print.Progress >= 99 || bytes_left < print.TargetBytesPrinted * 0.02 ? PrintFinishReason::Complete : PrintFinishReason::Interrupted;
+		} else {
+			m_PendingEntry->FinishReason = PrintFinishReason::Unknown;
+		}
+		
+		if(m_LastState->Print)
+			m_PendingEntry->LastKnownPrintState = *m_LastState->Print;
+
 		Emit(*m_PendingEntry);
 
 		m_PendingEntry = {};
@@ -44,6 +56,8 @@ void ShuiPrinterHistory::OnStateChanged(std::optional<PrinterState> state){
 		m_PendingEntry->Filename = state->Print->Filename;
 		m_PendingEntry->FileId = ToString(m_Storage.GetContentHashForFilename(m_PendingEntry->Filename).value_or(0));
 	}
+
+	m_LastState = state;
 }
 
 void ShuiPrinterHistory::Emit(const HistoryEntry& entry){

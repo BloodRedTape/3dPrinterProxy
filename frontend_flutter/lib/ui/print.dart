@@ -17,12 +17,11 @@ class PrintCardContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final double imageSize = 150;
     final double progressWidth = MediaQuery.of(context).size.width * 0.8 - imageSize;
-    print(state.filename);
     return Padding(
       padding: EdgeInsets.all(16),
       child: Row(
         children: [
-          Preview(imageSize, state.filename.length > 0 ? state.filename : 'Unknown'),
+          Preview(imageSize, state.filename.isNotEmpty ? state.filename : 'Unknown'),
           SizedBox(width: 16),
           Expanded(
             child: SizedBox(

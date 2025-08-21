@@ -16,4 +16,4 @@ tar -czf $zip_file -C $local_folder .
 
 scp $zip_file $"($remote_user)@($remote_host):($remote_path)"
 
-ssh $"($remote_user)@($remote_host)" $'tar -xzf ($remote_path) -C ($remote_dest); pm2 restart 3d_proxy'
+ssh $"($remote_user)@($remote_host)" $'tar -xzf ($remote_path) -C ($remote_dest);'

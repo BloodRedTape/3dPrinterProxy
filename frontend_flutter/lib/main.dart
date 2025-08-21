@@ -103,7 +103,7 @@ void main() {
   final proxyCubit = PrinterProxyCubit()..connect();
   final deviceCubit = DeviceInfoCubit('ttb_1');
   final printerCubit = PrinterStateCubit(proxyCubit, deviceCubit.device);
-  final historyCubit = HistoryCubit();
+  final historyCubit = HistoryCubit()..fetch();
 
   printerCubit.stream.listen(historyCubit.onStateChanged);
 

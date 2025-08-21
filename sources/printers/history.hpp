@@ -2,17 +2,29 @@
 
 #include "pch/std.hpp"
 #include "pch/json.hpp"
+#include <bsl/enum.hpp>
+#include "printers/state.hpp"
 
 using UnixTime = std::uint64_t;
+
+BSL_ENUM(PrintFinishReason,
+	Unknown,
+	Complete,
+	Interrupted
+);
+
+NLOHMANN_DEFINE_BSL_ENUM_WITH_DEFAULT(PrintFinishReason, PrintFinishReason::Unknown)
 
 struct HistoryEntry {
 	std::string Filename;
 	std::size_t ContentHash = 0;
 	std::string FileId;
 	UnixTime PrintStart = 0;
-	UnixTime PrintEnd = 0;
+	UnixTime PrintEnd = 0; 
+	PrintState LastKnownPrintState;
+	PrintFinishReason FinishReason = PrintFinishReason::Complete;
 
-	NLOHMANN_DEFINE_TYPE_INTRUSIVE_ONLY_SERIALIZE(HistoryEntry, Filename, FileId, PrintStart, PrintEnd)
+	NLOHMANN_DEFINE_TYPE_INTRUSIVE_ONLY_SERIALIZE(HistoryEntry, Filename, FileId, PrintStart, PrintEnd, LastKnownPrintState, FinishReason)
 
 	friend void from_json(const nlohmann::json& json, HistoryEntry& entry) {
 		entry.Filename = json["Filename"];

@@ -2,12 +2,15 @@
 
 #include "pch/std.hpp"
 #include <bsl/enum.hpp>
+#include "pch/json.hpp"
 
 BSL_ENUM(PrintStatus,
 	Heating,
 	Busy,
 	Printing
 );
+
+NLOHMANN_DEFINE_BSL_ENUM_WITH_DEFAULT(PrintStatus, PrintStatus::Busy)
 
 struct PrintState {
 	std::string Filename;
@@ -18,6 +21,8 @@ struct PrintState {
 	float Height = 0.f;
 	PrintStatus Status = PrintStatus::Busy;
 	//Remaining time
+
+	NLOHMANN_DEFINE_TYPE_INTRUSIVE_WITH_DEFAULT(PrintState, Filename, Progress, CurrentBytesPrinted, TargetBytesPrinted, Layer, Height, Status);
 };
 
 struct PrinterState {
