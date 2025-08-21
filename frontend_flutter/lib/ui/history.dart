@@ -63,9 +63,16 @@ class PrinterHistoryEntry extends StatelessWidget {
   Widget build(BuildContext context) {
     final double previewSize = 100;
 
-    Widget end = entry.finishReason == PrintFinishReason.complete 
-    ? Row(children: [Icon(MdiIcons.check), const SizedBox(width: 8,), Text('${entry.getPrettyDuration()}')]) 
-    : Row(children: [Icon(MdiIcons.skullCrossbones), const SizedBox(width: 8,), Text('${entry.finishReason.name} after ${entry.getPrettyDuration()} - ${entry.lastKnownPrintState.progress}%')]);
+    Widget end =
+        entry.finishState.reason == PrintFinishReason.complete
+            ? Row(children: [Icon(MdiIcons.check), const SizedBox(width: 8), Text('${entry.getPrettyDuration()}')])
+            : Row(
+              children: [
+                Icon(MdiIcons.skullCrossbones),
+                const SizedBox(width: 8),
+                Text('${entry.finishState.reason.name} after ${entry.getPrettyDuration()} - ${entry.finishState.progress}%'),
+              ],
+            );
 
     return Padding(
       padding: EdgeInsets.all(16),

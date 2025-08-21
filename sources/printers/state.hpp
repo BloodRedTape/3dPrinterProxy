@@ -21,8 +21,6 @@ struct PrintState {
 	float Height = 0.f;
 	PrintStatus Status = PrintStatus::Busy;
 	//Remaining time
-
-	NLOHMANN_DEFINE_TYPE_INTRUSIVE(PrintState, Filename, Progress, CurrentBytesPrinted, TargetBytesPrinted, Layer, Height, Status);
 };
 
 struct PrinterState {

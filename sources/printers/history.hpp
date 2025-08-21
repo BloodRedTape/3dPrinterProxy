@@ -15,29 +15,24 @@ BSL_ENUM(PrintFinishReason,
 
 NLOHMANN_DEFINE_BSL_ENUM_WITH_DEFAULT(PrintFinishReason, PrintFinishReason::Unknown)
 
+struct PrintFinishState{
+	float Progress = 0.f;
+	std::int64_t Bytes = 0;
+	std::int64_t Layer = 0;
+	float Height = 0.f;
+	PrintFinishReason Reason = PrintFinishReason::Complete;
+
+	NLOHMANN_DEFINE_TYPE_INTRUSIVE_WITH_DEFAULT(PrintFinishState, Progress, Bytes, Layer, Height, Reason);
+};
+
 struct HistoryEntry {
 	std::string Filename;
-	std::size_t ContentHash = 0;
 	std::string FileId;
 	UnixTime PrintStart = 0;
 	UnixTime PrintEnd = 0; 
-	PrintState LastKnownPrintState;
-	PrintFinishReason FinishReason = PrintFinishReason::Complete;
+	PrintFinishState FinishState;
 
-	NLOHMANN_DEFINE_TYPE_INTRUSIVE_ONLY_SERIALIZE(HistoryEntry, Filename, FileId, PrintStart, PrintEnd, LastKnownPrintState, FinishReason)
-
-	friend void from_json(const nlohmann::json& json, HistoryEntry& entry) {
-		entry.Filename = json["Filename"];
-		entry.FileId = json.count("FileId") ? json["FileId"] : "";
-		entry.PrintStart = json["PrintStart"];
-		entry.PrintEnd = json["PrintEnd"];
-
-		if(json.count("ContentHash"))
-			entry.FileId = ToString(std::size_t(json["ContentHash"]));
-
-		entry.LastKnownPrintState = json["LastKnownPrintState"];
-		entry.FinishReason = PrintFinishReason::FromString(json["FinishReason"].get<std::string>()).value_or(PrintFinishReason::Complete);
-	}
+	NLOHMANN_DEFINE_TYPE_INTRUSIVE_WITH_DEFAULT(HistoryEntry, Filename, FileId, PrintStart, PrintEnd, FinishState)
 };
 
 class PrinterHistory {

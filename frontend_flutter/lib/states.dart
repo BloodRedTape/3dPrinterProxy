@@ -67,6 +67,13 @@ enum PrintFinishReason {
         return PrintFinishReason.unknown;
     }
   }
+
+  @override
+  String toString() => name;
+
+  String toJson() => name;
+
+  static PrintFinishReason fromJson(String value) => fromString(value);
 }
 
 class PrintState {
@@ -158,15 +165,41 @@ class PrinterProxyState {
   }
 }
 
+class PrintFinishState {
+  double progress;
+  int bytes;
+  int layer;
+  double height;
+  PrintFinishReason reason;
+
+  PrintFinishState({
+    this.progress = 0.0,
+    this.bytes = 0,
+    this.layer = 0,
+    this.height = 0.0,
+    this.reason = PrintFinishReason.complete, // default value like C++
+  });
+
+  // Deserialize from JSON
+  factory PrintFinishState.fromJson(Map<String, dynamic> json) {
+    return PrintFinishState(
+      progress: (json['Progress'] ?? 0.0).toDouble(),
+      bytes: json['Bytes'] ?? 0,
+      layer: json['Layer'] ?? 0,
+      height: (json['Height'] ?? 0.0).toDouble(),
+      reason: json['Reason'] != null ? PrintFinishReason.fromJson(json['Reason']) : PrintFinishReason.complete,
+    );
+  }
+}
+
 class HistoryEntry {
   final String filename;
   final String fileId;
   final int printStart;
   final int printEnd;
-  final PrintState lastKnownPrintState;
-  final PrintFinishReason finishReason;
+  final PrintFinishState finishState;
 
-  HistoryEntry({required this.filename, required this.fileId, required this.printStart, required this.printEnd, required this.lastKnownPrintState, required this.finishReason});
+  HistoryEntry({required this.filename, required this.fileId, required this.printStart, required this.printEnd, required this.finishState});
 
   factory HistoryEntry.fromJson(Map<String, dynamic> json) {
     return HistoryEntry(
@@ -174,8 +207,7 @@ class HistoryEntry {
       fileId: json['FileId'] as String? ?? '',
       printStart: _parseInt(json['PrintStart']),
       printEnd: _parseInt(json['PrintEnd']),
-      lastKnownPrintState: PrintState.fromJson(json['LastKnownPrintState']),
-      finishReason: PrintFinishReason.fromString(json['FinishReason'])
+      finishState: PrintFinishState.fromJson(json['FinishState']),
     );
   }
 

@@ -37,13 +37,19 @@ void ShuiPrinterHistory::OnStateChanged(std::optional<PrinterState> state){
 			const auto &print = *m_LastState->Print;
 			auto bytes_left = print.TargetBytesPrinted - print.CurrentBytesPrinted;
 
-			m_PendingEntry->FinishReason = print.Progress >= 99 || bytes_left < print.TargetBytesPrinted * 0.02 ? PrintFinishReason::Complete : PrintFinishReason::Interrupted;
+			m_PendingEntry->FinishState.Reason = print.Progress >= 99 || bytes_left < print.TargetBytesPrinted * 0.02 ? PrintFinishReason::Complete : PrintFinishReason::Interrupted;
 		} else {
-			m_PendingEntry->FinishReason = PrintFinishReason::Unknown;
+			m_PendingEntry->FinishState.Reason= PrintFinishReason::Unknown;
 		}
 		
-		if(m_LastState->Print)
-			m_PendingEntry->LastKnownPrintState = *m_LastState->Print;
+		LogShuiPrinterHistoryIf(!m_LastState->Print, Error, "LastState has no Print state for %", state->Print->Filename);
+
+		if(m_LastState->Print){
+			m_PendingEntry->FinishState.Progress = m_LastState->Print->Progress;
+			m_PendingEntry->FinishState.Bytes = m_LastState->Print->CurrentBytesPrinted;
+			m_PendingEntry->FinishState.Layer = m_LastState->Print->Layer;
+			m_PendingEntry->FinishState.Height = m_LastState->Print->Height;
+		}
 
 		Emit(*m_PendingEntry);
 
