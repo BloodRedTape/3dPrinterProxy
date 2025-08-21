@@ -25,6 +25,8 @@ class PrinterPage extends BlocWidget<DeviceInfo> {
       padding: EdgeInsets.all(16),
       child: Column(
         children: [
+          PrinterUploadCard(PrinterStorageUploadStateCubit(proxy, state.id)),
+          const SizedBox(height: 20),
           PrinterControlCard(cubit),
           const SizedBox(height: 20),
           PrinterPrintCard(cubit),

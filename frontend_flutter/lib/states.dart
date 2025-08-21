@@ -247,10 +247,10 @@ class PrinterStorageUploadState {
   // Factory to construct from JSON
   factory PrinterStorageUploadState.fromJson(Map<String, dynamic> json) {
     return PrinterStorageUploadState(
-      filename: json['Filename'] ?? '',
-      current: json['Current'] ?? 0,
-      target: json['Target'] ?? 0,
-      status: json['Status'] != null ? PrinterStorageUploadStatus.fromJson(json['Status']) : PrinterStorageUploadStatus.sending,
+      filename: json['filename'] ?? '',
+      current: json['current'] ?? 0,
+      target: json['target'] ?? 0,
+      status: json['status'] != null ? PrinterStorageUploadStatus.fromJson(json['status']) : PrinterStorageUploadStatus.sending,
     );
   }
 }

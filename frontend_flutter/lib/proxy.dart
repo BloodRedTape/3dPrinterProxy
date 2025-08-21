@@ -136,6 +136,12 @@ class PrinterProxyCubit {
           }
           break;
         case MessageType.upload:
+          try {
+            final upload = PrinterStorageUploadState.fromJson(message.content!);
+            onUploadChanged[message.id]?.call(upload);
+          } catch (e) {
+            onUploadChanged[message.id]?.call(null);
+          }
           break;
       }
     } catch (e) {}
@@ -181,6 +187,19 @@ class PrinterStateCubit extends Cubit<PrinterState?> {
   }
 
   void onNewState(PrinterState? state) {
+    emit(state);
+  }
+}
+
+class PrinterStorageUploadStateCubit extends Cubit<PrinterStorageUploadState?> {
+  PrinterProxyCubit proxy;
+  String deviceId;
+
+  PrinterStorageUploadStateCubit(this.proxy, this.deviceId) : super(null) {
+    proxy.onUploadChanged[deviceId] = onNewState;
+  }
+
+  void onNewState(PrinterStorageUploadState? state) {
     emit(state);
   }
 }
