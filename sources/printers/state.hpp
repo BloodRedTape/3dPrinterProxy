@@ -22,7 +22,7 @@ struct PrintState {
 	PrintStatus Status = PrintStatus::Busy;
 	//Remaining time
 
-	NLOHMANN_DEFINE_TYPE_INTRUSIVE_WITH_DEFAULT(PrintState, Filename, Progress, CurrentBytesPrinted, TargetBytesPrinted, Layer, Height, Status);
+	NLOHMANN_DEFINE_TYPE_INTRUSIVE(PrintState, Filename, Progress, CurrentBytesPrinted, TargetBytesPrinted, Layer, Height, Status);
 };
 
 struct PrinterState {

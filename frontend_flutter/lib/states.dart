@@ -47,6 +47,28 @@ enum PrintStatus {
   }
 }
 
+enum PrintFinishReason {
+  unknown('Unknown'),
+  complete('Complete'),
+  interrupted('Interrupted');
+
+  const PrintFinishReason(this.name);
+  final String name;
+
+  static PrintFinishReason fromString(String value) {
+    switch (value.toLowerCase()) {
+      case 'unknown':
+        return PrintFinishReason.unknown;
+      case 'complete':
+        return PrintFinishReason.complete;
+      case 'interrupted':
+        return PrintFinishReason.interrupted;
+      default:
+        return PrintFinishReason.unknown;
+    }
+  }
+}
+
 class PrintState {
   final String filename;
   final double progress;
@@ -69,7 +91,7 @@ class PrintState {
   factory PrintState.fromJson(Map<String, dynamic> json) {
     return PrintState(
       filename: json['filename'] ?? '',
-      progress: (json['progress'] ?? 0.0).toDouble(),
+      progress: (json['progress'] ?? json['Progress'] ?? 0.0).toDouble(),
       currentBytesPrinted: json['bytes_current'] ?? 0,
       targetBytesPrinted: json['bytes_target'] ?? 0,
       layer: json['layer'] ?? 0,
@@ -141,8 +163,10 @@ class HistoryEntry {
   final String fileId;
   final int printStart;
   final int printEnd;
+  final PrintState lastKnownPrintState;
+  final PrintFinishReason finishReason;
 
-  HistoryEntry({required this.filename, required this.fileId, required this.printStart, required this.printEnd});
+  HistoryEntry({required this.filename, required this.fileId, required this.printStart, required this.printEnd, required this.lastKnownPrintState, required this.finishReason});
 
   factory HistoryEntry.fromJson(Map<String, dynamic> json) {
     return HistoryEntry(
@@ -150,6 +174,8 @@ class HistoryEntry {
       fileId: json['FileId'] as String? ?? '',
       printStart: _parseInt(json['PrintStart']),
       printEnd: _parseInt(json['PrintEnd']),
+      lastKnownPrintState: PrintState.fromJson(json['LastKnownPrintState']),
+      finishReason: PrintFinishReason.fromString(json['FinishReason'])
     );
   }
 

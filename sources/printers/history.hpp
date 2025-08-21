@@ -34,6 +34,9 @@ struct HistoryEntry {
 
 		if(json.count("ContentHash"))
 			entry.FileId = ToString(std::size_t(json["ContentHash"]));
+
+		entry.LastKnownPrintState = json["LastKnownPrintState"];
+		entry.FinishReason = PrintFinishReason::FromString(json["FinishReason"].get<std::string>()).value_or(PrintFinishReason::Complete);
 	}
 };
 

@@ -4,6 +4,7 @@
         "conan": {}
     },
     "include": [
-        "X:\\Dev\\3dPrinterProxy\\build\\generators\\CMakePresets.json"
+        "X:\\Dev\\3dPrinterProxy\\build\\generators\\CMakePresets.json",
+        "build\\generators\\CMakePresets.json"
     ]
 }

@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter_material_design_icons/flutter_material_design_icons.dart';
 import 'package:frontend_flutter/ui/preview.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/cupertino.dart';
@@ -62,6 +63,10 @@ class PrinterHistoryEntry extends StatelessWidget {
   Widget build(BuildContext context) {
     final double previewSize = 100;
 
+    Widget end = entry.finishReason == PrintFinishReason.complete 
+    ? Row(children: [Icon(MdiIcons.check), const SizedBox(width: 8,), Text('${entry.getPrettyDuration()}')]) 
+    : Row(children: [Icon(MdiIcons.skullCrossbones), const SizedBox(width: 8,), Text('${entry.finishReason.name} after ${entry.getPrettyDuration()} - ${entry.lastKnownPrintState.progress}%')]);
+
     return Padding(
       padding: EdgeInsets.all(16),
       child: Row(
@@ -73,7 +78,7 @@ class PrinterHistoryEntry extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: [Text(entry.filename).semiBold, Text(entry.getPrettyDuration())],
+              children: [Text(entry.filename).semiBold, end],
             ),
           ),
         ],
@@ -89,7 +94,7 @@ class PrinterHistoryCard extends CubitWidget<HistoryCubit, List<HistoryEntry>> {
   Widget buildFromState(BuildContext context, List<HistoryEntry> state) {
     return PrinterCard(
       title: 'History',
-      child: state.length == 0 ? MessageCardContent('Empty') : Column(children: state.map((e) => PrinterHistoryEntry(entry: e)).toList()),
+      child: state.isEmpty ? MessageCardContent('Empty') : Column(children: state.map((e) => PrinterHistoryEntry(entry: e)).toList()),
     );
   }
 }
