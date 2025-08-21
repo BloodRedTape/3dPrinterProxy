@@ -1,10 +1,13 @@
 # Variables
-let local_folder = ".\\build\\web"
-let zip_file     = ".\\build\\web.tar.gz"
+let local_folder = "..\\frontend_flutter\\build\\web"
+let zip_file     = "..\\frontend_flutter\\build\\web.tar.gz"
+let flutter_project_path = "..\\frontend_flutter"
 let remote_user  = "bloodredtape"
 let remote_host  = "192.168.1.209"
 let remote_path  = "/home/bloodredtape/Pm2/3dPrinterProxy/out/web.tar.gz"
 let remote_dest = "/home/bloodredtape/Pm2/3dPrinterProxy/out/"
+
+cd $flutter_project_path
 
 flutter build web --release
 
