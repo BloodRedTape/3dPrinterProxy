@@ -160,10 +160,8 @@ void OctoPrintInterface::PostFilesLocal(const beauty::request& req, beauty::resp
     }
     
     bool should_print = (print == "true");
-    bool uploaded = m_Printer->Storage().UploadGCodeFile(filename, std::string(file_content), should_print);
 
-    if(!uploaded)
-        throw beauty::http_error::client::failed_dependency();
+    m_Printer->Storage().UploadGCodeFileAsync(filename, std::string(file_content), should_print, nullptr);
     
     resp.body() = R"({"done": true})";
     resp.set(beauty::content_type::application_json);

@@ -64,6 +64,10 @@ void PrinterProxy::RunAsync() {
 		printer->OnStateChanged = [this, printer, id]() {
 			return BroadcastMessage(id, MessageType::state, StateToJson(printer->GetPrinterState()));
 		};
+
+		printer->Storage().OnUploadStateChanged = [this, printer, id]() {
+			return BroadcastMessage(id, MessageType::upload, StateToJson(printer->Storage().GetUploadState()));
+		};
 	}
 
 }
@@ -289,6 +293,21 @@ nlohmann::json PrinterProxy::StateToJson(const std::optional<PrinterState>& stat
 	state_json["print"]["status"] = print.Status.Name();
 	state_json["print"]["bytes_current"] = print.CurrentBytesPrinted;
 	state_json["print"]["bytes_target"] = print.TargetBytesPrinted;
+
+	return state_json;
+}
+
+nlohmann::json PrinterProxy::StateToJson(const std::optional<PrinterStorageUploadState>& state_opt) {
+	nlohmann::json state_json;
+
+	if (!state_opt.has_value()) {
+		return state_json;
+	}
+
+	state_json["filename"] = state_opt->Filename;
+	state_json["current"] = state_opt->Current;
+	state_json["target"] = state_opt->Target;
+	state_json["status"] = state_opt->Status.Name();
 
 	return state_json;
 }

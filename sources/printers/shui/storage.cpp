@@ -27,9 +27,26 @@ ShuiPrinterStorage::ShuiPrinterStorage(const std::string& ip, const std::filesys
     Load();
 }
 
+std::optional<PrinterStorageUploadState> ShuiPrinterStorage::GetUploadState() const{
+    return m_UploadState;
+}
+
+void ShuiPrinterStorage::Emit(std::optional<PrinterStorageUploadState> upload){
+    m_UploadState = upload;
+    std::call(OnUploadStateChanged);
+}
+
 static std::string NoError = "";
 
 void ShuiPrinterStorage::UploadGCodeFileAsync(const std::string& filename, const std::string& content, bool print, std::function<void(bool)> callback) {
+    Emit(PrinterStorageUploadState(filename));
+
+    auto OnProgressChanged = [this, filename](std::int64_t current, std::int64_t target) {
+        Emit(PrinterStorageUploadState(filename, current, target));
+
+        Println("%/%", current, target);
+    };
+
     auto OnUploaded = [this, callback = std::move(callback), filename = filename](std::variant<std::string, const std::string *> result) {
 
         const std::string &error = result.index() == 0 ? std::get<0>(result) : NoError;
@@ -40,17 +57,27 @@ void ShuiPrinterStorage::UploadGCodeFileAsync(const std::string& filename, const
 
         Println("Error [%], Filename: %, 8.3: %", error, filename, std::safe(Get83Filename(filename)));
 
+        {
+            m_UploadState->Status = content ? PrinterStorageUploadStatus::Success : PrinterStorageUploadStatus::Failure;
+            std::call(OnUploadStateChanged);
+            Emit(std::nullopt);
+        }
+
         std::call(callback, (bool)content);
     };
 
-    ShuiUpload::RunAsync(m_Ip, filename, PreprocessGCode(content), print, OnUploaded);
+    ShuiUpload::RunAsync(m_Ip, filename, PreprocessGCode(content), print, OnUploaded, OnProgressChanged);
 }
 
 bool ShuiPrinterStorage::UploadGCodeFile(const std::string& filename, const std::string& content, bool print){
     std::string processed_gcode = PreprocessGCode(content);
 
-    auto OnProgressChanged = [](std::int64_t now, std::int64_t target) {
-        Println("%/%", now, target);
+    Emit(PrinterStorageUploadState(filename));
+
+    auto OnProgressChanged = [&](std::int64_t current, std::int64_t target) {
+        Emit(PrinterStorageUploadState(filename, current, target));
+
+        Println("%/%", current, target);
     };
 
     std::optional<std::string> result = ShuiUpload::Run(m_Ip, filename, processed_gcode, print, OnProgressChanged);
@@ -59,6 +86,12 @@ bool ShuiPrinterStorage::UploadGCodeFile(const std::string& filename, const std:
 
     if(success)
         OnFileUploaded(filename, processed_gcode);
+    
+    {
+        m_UploadState->Status = success ? PrinterStorageUploadStatus::Success : PrinterStorageUploadStatus::Failure;
+        std::call(OnUploadStateChanged);
+        Emit(std::nullopt);
+    }
     
     if(result.has_value())
         LogShuiStorage(Error, "UploadGCode exited with error '%'", result.value());

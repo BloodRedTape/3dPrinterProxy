@@ -13,7 +13,8 @@
 
 BSL_ENUM(MessageType,
     init,
-    state
+    state,
+    upload
 );
 
 struct Message {
@@ -78,6 +79,7 @@ public:
     void BroadcastMessage(const std::string &id, MessageType type, const nlohmann::json &content);
 
     static nlohmann::json StateToJson(const std::optional<PrinterState> &state);
+    static nlohmann::json StateToJson(const std::optional<PrinterStorageUploadState> &state);
 
     std::vector<std::string> PrintersIds()const;
 

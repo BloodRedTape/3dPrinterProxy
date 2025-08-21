@@ -21,12 +21,18 @@ class ShuiPrinterStorage: public PrinterStorage{
 	std::filesystem::path m_OldPath;
 	std::filesystem::path m_FilesPath;
 	std::filesystem::path m_MetadataPath;
+
+	std::optional<PrinterStorageUploadState> m_UploadState;
 	
 	std::unordered_map<std::string, GCodeFileEntry> m_83ToFile;
 
 	std::unordered_map<std::size_t, GCodeFileMetadata> m_ContentHashToMetadata;
 public:
 	ShuiPrinterStorage(const std::string& ip, const std::filesystem::path &data_path);
+
+	std::optional<PrinterStorageUploadState> GetUploadState()const override;
+
+	void Emit(std::optional<PrinterStorageUploadState> upload);
 
 	void UploadGCodeFileAsync(const std::string &filename, const std::string& content, bool print, std::function<void(bool)> callback)override;
 
