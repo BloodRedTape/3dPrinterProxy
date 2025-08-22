@@ -45,8 +45,25 @@ class PowerButton extends CubitWidget<PrinterPowerCubit, String?> {
 
   @override
   Widget buildFromState(BuildContext context, String? state) {
-    bool isOn = state == 'on';
-    return IconButton.secondary(icon: Icon(isOn ? Icons.power : Icons.power_off), onPressed: () => getCubit().requestPower(!isOn));
+    bool? isOn = _parseState(state);
+
+    if (isOn == null) return IconButton.ghost(icon: Icon(Icons.question_mark));
+
+    final onPressed = () => getCubit().requestPower(!isOn);
+
+    if (isOn) {
+      return IconButton.primary(icon: Icon(Icons.power), onPressed: onPressed);
+    } else {
+      return IconButton.secondary(icon: Icon(Icons.power_off), onPressed: onPressed);
+    }
+  }
+
+  bool? _parseState(String? state) {
+    return state?.toLowerCase() == 'on'
+        ? true
+        : state?.toLowerCase() == 'off'
+        ? false
+        : null;
   }
 }
 
