@@ -66,9 +66,9 @@ void ShuiPrinter::RunAsync(){
 }
 
 void ShuiPrinter::HandleStateChanged(){
-    std::call(OnStateChanged);
-
     m_History.OnStateChanged(m_State);
+
+    std::call(OnStateChanged);
 }
 
 static auto MakeGCodeEngineCallback(const ShuiPrinter *printer, GCodeCallback &&callback) {
