@@ -72,8 +72,7 @@ class PrinterCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       padding: EdgeInsets.all(0),
-      child: Flex(
-        direction: Axis.vertical,
+      child: Column(
         children: [AppBar(title: Text(title), trailing: titleTrailing ?? [], backgroundColor: Theme.of(context).colorScheme.card.withLuminance(0.98)), child],
       ),
     );
