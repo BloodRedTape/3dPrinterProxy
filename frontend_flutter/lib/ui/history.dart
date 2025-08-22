@@ -99,7 +99,7 @@ class PrinterHistoryCard extends CubitWidget<HistoryCubit, List<HistoryEntry>> {
 
   @override
   Widget buildFromState(BuildContext context, List<HistoryEntry> state) {
-    final Widget history = Expanded(child: SingleChildScrollView(child: Column(children: state.map((e) => PrinterHistoryEntry(entry: e)).toList())));
+    final Widget history = Expanded(child: SingleChildScrollView(child: Column(children: state.reversed.map((e) => PrinterHistoryEntry(entry: e)).toList())));
     return PrinterCard(title: 'History', child: state.isEmpty ? MessageCardContent('Empty') : history);
   }
 }
