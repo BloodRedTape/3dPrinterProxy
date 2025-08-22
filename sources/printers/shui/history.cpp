@@ -42,8 +42,6 @@ void ShuiPrinterHistory::OnStateChanged(std::optional<PrinterState> state){
 			m_PendingEntry->FinishState.Reason= PrintFinishReason::Unknown;
 		}
 		
-		LogShuiPrinterHistoryIf(!m_LastState || !m_LastState->Print, Error, "LastState has no Print state for %", state->Print->Filename);
-
 		if(m_LastState && m_LastState->Print){
 			m_PendingEntry->FinishState.Progress = m_LastState->Print->Progress;
 			m_PendingEntry->FinishState.Bytes = m_LastState->Print->CurrentBytesPrinted;

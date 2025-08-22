@@ -78,7 +78,13 @@ class ProxyFrontend extends CubitWidget<DeviceInfoCubit, DeviceInfo?> {
 
   @override
   Widget buildFromState(BuildContext context, DeviceInfo? info) {
-    final refresh = IconButton.secondary(icon: const Icon(Icons.refresh), onPressed: () => getCubit().fetch());
+    final refresh = IconButton.secondary(
+      icon: const Icon(Icons.refresh),
+      onPressed: () {
+        getCubit().fetch();
+        proxyCubit.reconnect();
+      },
+    );
     final power = PowerButton(powerCubit);
 
     return Scaffold(

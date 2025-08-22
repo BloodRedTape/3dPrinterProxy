@@ -82,6 +82,11 @@ class PrinterProxyCubit {
     }
   }
 
+  void reconnect() {
+    disconnect();
+    connect();
+  }
+
   void disconnect() {
     _cancelReconnectTimer();
     _subscription?.cancel();
