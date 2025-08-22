@@ -27,7 +27,7 @@ class PrinterPage extends BlocWidget<DeviceInfo> {
         children: [
           PrinterUploadCard(PrinterStorageUploadStateCubit(proxy, state.id)),
           const SizedBox(height: 20),
-          PrinterControlCard(cubit),
+          PrinterControlCard(cubit, proxy),
           const SizedBox(height: 20),
           PrinterPrintCard(cubit),
           const SizedBox(height: 20),
@@ -83,7 +83,11 @@ class ProxyFrontend extends CubitWidget<DeviceInfoCubit, DeviceInfo?> {
 
     return Scaffold(
       headers: [
-        AppBar(backgroundColor: Theme.of(context).colorScheme.card, title: Text(info?.name() ?? 'Unknown Printer'), trailing: [refresh, power]),
+        AppBar(
+          backgroundColor: Theme.of(context).colorScheme.card,
+          title: Row(children: [power, const SizedBox(width: 16), Text(info?.name() ?? 'Unknown Printer')]),
+          trailing: [refresh],
+        ),
       ],
       child: MultiBlocProvider(
         providers: [

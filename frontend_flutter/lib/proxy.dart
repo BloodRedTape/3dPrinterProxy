@@ -104,17 +104,17 @@ class PrinterProxyCubit {
   }
 
   void setTargetBedTemperature(String deviceId, double temperature) {
-    final message = PrinterProxyMessage(type: MessageType.state, id: deviceId, content: {'property': 'target_bed', 'value': temperature});
+    final message = PrinterProxyMessage(type: MessageType.set, id: deviceId, content: {'property': 'target_bed', 'value': temperature});
     sendMessage(message);
   }
 
   void setTargetExtruderTemperature(String deviceId, double temperature) {
-    final message = PrinterProxyMessage(type: MessageType.state, id: deviceId, content: {'property': 'target_extruder', 'value': temperature});
+    final message = PrinterProxyMessage(type: MessageType.set, id: deviceId, content: {'property': 'target_extruder', 'value': temperature});
     sendMessage(message);
   }
 
   void setFeedRate(String deviceId, double feedRate) {
-    final message = PrinterProxyMessage(type: MessageType.state, id: deviceId, content: {'property': 'feedrate', 'value': feedRate});
+    final message = PrinterProxyMessage(type: MessageType.set, id: deviceId, content: {'property': 'feedrate', 'value': feedRate});
     sendMessage(message);
   }
 
@@ -127,6 +127,8 @@ class PrinterProxyCubit {
 
       switch (message.type) {
         case MessageType.init:
+          break;
+        case MessageType.set:
           break;
         case MessageType.state:
           try {

@@ -9,7 +9,8 @@ import 'device.dart';
 enum MessageType {
   init('init'),
   state('state'),
-  upload('upload');
+  upload('upload'),
+  set('set');
 
   const MessageType(this.name);
   final String name;
@@ -22,6 +23,8 @@ enum MessageType {
         return MessageType.state;
       case 'upload':
         return MessageType.upload;
+      case 'set':
+        return MessageType.set;
       default:
         return MessageType.state;
     }
