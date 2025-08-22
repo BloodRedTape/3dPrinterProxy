@@ -72,8 +72,8 @@ class UploadCardContent extends StatelessWidget {
     return SurfaceCard(
       child: Basic(
         title: Text('${state.filename} $status'),
-        trailing: PrimaryButton(
-          size: ButtonSize.small,
+        trailing: Button(
+          style: status == PrinterStorageUploadStatus.success ? ButtonVariance.primary : ButtonVariance.destructive,
           onPressed: () {
             overlay.close();
           },
