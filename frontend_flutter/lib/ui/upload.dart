@@ -5,6 +5,17 @@ import 'package:frontend_flutter/ui/common.dart';
 import 'package:frontend_flutter/proxy.dart';
 import 'package:frontend_flutter/states.dart';
 
+class UploadToastWidget extends BlocWidget<PrinterStorageUploadState?> {
+  final Widget child;
+
+  const UploadToastWidget(super.cubit, this.child);
+
+  @override
+  Widget buildFromState(BuildContext context, PrinterStorageUploadState? state) {
+    return child;
+  }
+}
+
 class UploadCardContent extends StatelessWidget {
   final PrinterStorageUploadState state;
 
@@ -15,7 +26,8 @@ class UploadCardContent extends StatelessWidget {
     final double padding = 16;
     final double progressWidth = MediaQuery.of(context).size.width - padding * 2;
     final int percent = state.target > 0 ? (state.current / state.target * 100).toInt() : 0;
-    return Padding(
+
+    final Widget content = Padding(
       padding: EdgeInsets.all(padding),
       child: Row(
         children: [
@@ -44,12 +56,22 @@ class UploadCardContent extends StatelessWidget {
         ],
       ),
     );
+
+    return BlocListener<Cubit<PrinterStorageUploadState?>, PrinterStorageUploadState?>(
+      listenWhen: (prev, curr) => prev?.status != curr?.status,
+      listener: (context, state) {
+        if (state?.status != null && state?.status != PrinterStorageUploadStatus.sending) {
+          showToast(context: context, builder: (ctx, overlay) => _buildToast(ctx, overlay, state?.status ?? PrinterStorageUploadStatus.failure));
+        }
+      },
+      child: content, // normal build here
+    );
   }
 
-  Widget _buildToast(BuildContext context, ToastOverlay overlay) {
+  Widget _buildToast(BuildContext context, ToastOverlay overlay, PrinterStorageUploadStatus status) {
     return SurfaceCard(
       child: Basic(
-        title: Text('${state.filename} ${state.status}'),
+        title: Text('${state.filename} $status'),
         trailing: PrimaryButton(
           size: ButtonSize.small,
           onPressed: () {
