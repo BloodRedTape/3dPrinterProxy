@@ -40,25 +40,35 @@ class PrinterPage extends BlocWidget<DeviceInfo> {
   }
 }
 
+class PowerButton extends CubitWidget<PrinterPowerCubit, String?> {
+  PowerButton(super.cubit);
+
+  @override
+  Widget buildFromState(BuildContext context, String? state) {
+    bool isOn = state == 'on';
+    return IconButton.secondary(icon: Icon(isOn ? Icons.power : Icons.power_off), onPressed: () => getCubit().requestPower(!isOn));
+  }
+}
+
 class ProxyFrontend extends CubitWidget<DeviceInfoCubit, DeviceInfo?> {
   final PrinterProxyCubit proxyCubit;
   final PrinterStateCubit stateCubit;
   final DeviceInfoCubit deviceCubit;
   final HistoryCubit historyCubit;
+  final PrinterPowerCubit powerCubit;
 
-  ProxyFrontend(this.proxyCubit, this.stateCubit, this.deviceCubit, this.historyCubit, {super.key}) : super(deviceCubit) {
+  ProxyFrontend(this.proxyCubit, this.stateCubit, this.deviceCubit, this.historyCubit, this.powerCubit, {super.key}) : super(deviceCubit) {
     getCubit().fetch();
   }
 
   @override
   Widget buildFromState(BuildContext context, DeviceInfo? info) {
+    final refresh = IconButton.secondary(icon: const Icon(Icons.refresh), onPressed: () => getCubit().fetch());
+    final power = PowerButton(powerCubit);
+
     return Scaffold(
       headers: [
-        AppBar(
-          backgroundColor: Theme.of(context).colorScheme.card,
-          title: Text(info?.name() ?? 'Unknown Printer'),
-          trailing: [IconButton.secondary(icon: const Icon(Icons.refresh), onPressed: () => getCubit().fetch())],
-        ),
+        AppBar(backgroundColor: Theme.of(context).colorScheme.card, title: Text(info?.name() ?? 'Unknown Printer'), trailing: [refresh, power]),
       ],
       child: MultiBlocProvider(
         providers: [
@@ -107,6 +117,9 @@ void main() {
   final deviceCubit = DeviceInfoCubit('ttb_1');
   final printerCubit = PrinterStateCubit(proxyCubit, deviceCubit.device);
   final historyCubit = HistoryCubit()..fetch();
+  final powerCubit = PrinterPowerCubit();
+
+  powerCubit.connect();
 
   printerCubit.stream.listen(historyCubit.onStateChanged);
 
@@ -117,7 +130,7 @@ void main() {
   runApp(
     ShadcnApp(
       title: 'Printer Proxy',
-      home: ProxyFrontend(proxyCubit, printerCubit, deviceCubit, historyCubit),
+      home: ProxyFrontend(proxyCubit, printerCubit, deviceCubit, historyCubit, powerCubit),
       theme: ThemeData(colorScheme: lightBlue(), radius: 0.0),
     ),
   );

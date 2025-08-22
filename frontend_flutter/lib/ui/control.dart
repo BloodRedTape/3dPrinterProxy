@@ -4,6 +4,7 @@ import 'package:frontend_flutter/bloc.dart';
 import 'package:frontend_flutter/ui/common.dart';
 import 'package:frontend_flutter/proxy.dart';
 import 'package:frontend_flutter/states.dart';
+import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 class TempPair extends StatelessWidget {
   IconData icon;

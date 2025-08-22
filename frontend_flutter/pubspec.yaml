@@ -39,6 +39,11 @@ dependencies:
   web_socket_channel: ^3.0.3
   flutter_material_design_icons: ^1.1.7447
   duration: ^4.0.3
+  home_assistant_ws: 
+    git: 
+      url: https://github.com/BloodRedTape/home_assistant_ws
+      ref: 4d513a0e7841c9176517870386e0ccc3ccd9b192
+  http: ^1.5.0
 
 dev_dependencies:
   flutter_test:

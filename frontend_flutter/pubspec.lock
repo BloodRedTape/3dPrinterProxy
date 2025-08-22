@@ -195,8 +195,17 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.0.1"
+  home_assistant_ws:
+    dependency: "direct main"
+    description:
+      path: "."
+      ref: "4d513a0e7841c9176517870386e0ccc3ccd9b192"
+      resolved-ref: "4d513a0e7841c9176517870386e0ccc3ccd9b192"
+      url: "https://github.com/BloodRedTape/home_assistant_ws"
+    source: git
+    version: "1.0.0"
   http:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: http
       sha256: bb2ce4590bc2667c96f318d68cac1b5a7987ec819351d32b1c987239a815e007

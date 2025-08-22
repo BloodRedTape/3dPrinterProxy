@@ -1,4 +1,6 @@
 import 'package:frontend_flutter/bloc.dart';
+import 'package:frontend_flutter/config.dart';
+import 'package:home_assistant_ws/home_assistant_ws.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
@@ -46,6 +48,40 @@ class DeviceInfoCubit extends Cubit<DeviceInfo?> {
       emit(DeviceInfo.fromJson(device, data));
     } catch (e) {
       emit(null);
+    }
+  }
+}
+
+class PrinterPowerCubit extends Cubit<String?> {
+  final HomeAssistantWs homeAssistantWs = HomeAssistantWs(token: haToken, baseUrl: haUrl);
+  final String printerPowerId = 'switch.power_print3d_master';
+
+  PrinterPowerCubit() : super(null);
+
+  Future<void> connect() async {
+    if (!await homeAssistantWs.isConnected()) {
+      await homeAssistantWs.connect();
+      homeAssistantWs.subscribeEntities(onEventMessage);
+    }
+  }
+
+  void requestPower(bool power) async {
+    await connect();
+    await homeAssistantWs.executeServiceForEntity(printerPowerId, power ? 'turn_on' : 'turn_off');
+  }
+
+  void onEventMessage(EventMessage message) {
+    if (message.available != null) {
+      for (final Entity entity in message.available!.entities.where((e) => e.entityId == printerPowerId).toList()) {
+        emit(entity.state);
+      }
+    }
+    if (message.change != null) {
+      for (final EntityChange entity in message.change!.changes.where((c) => c.entityId == printerPowerId).toList()) {
+        if (entity.stateChange != null) {
+          emit(entity.stateChange!.newValue);
+        }
+      }
     }
   }
 }
